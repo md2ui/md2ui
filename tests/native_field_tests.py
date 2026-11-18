@@ -16,6 +16,7 @@ The last needs AppKit; elsewhere it is skipped, as the field is.
 Run with: uv run python tests/native_field_tests.py
 """
 
+import ctypes
 import sys
 import unittest
 
@@ -59,9 +60,17 @@ def test_a_native_bar_draws_no_text():
 def test_the_control_edits_sends_and_locks():
     if sys.platform != "darwin":
         raise unittest.SkipTest("not macOS: no native field to drive")
-    glfw.init()
+    if not glfw.init():
+        raise unittest.SkipTest("GLFW cannot start: no window system to attach to")
     glfw.window_hint(glfw.VISIBLE, False)
+    # The field is an AppKit view on the window's content view: it draws nothing
+    # through GL, so the window asks for no context -- a host without a usable
+    # pixel format (a CI runner) still gets one.
+    glfw.window_hint(glfw.CLIENT_API, glfw.NO_API)
     window = glfw.create_window(400, 300, "native field", None, None)
+    glfw.default_window_hints()  # the hints are process-wide: leave none behind
+    if not window:
+        raise unittest.SkipTest("GLFW could not create a window on this host")
     try:
         bar = PromptBar(skia.Typeface.MakeDefault())
         bar.sync("l")
@@ -95,11 +104,28 @@ def test_the_control_edits_sends_and_locks():
     print("  ✓  the control edits, sends, hands keys back and locks")
 
 
+def test_a_host_that_cannot_make_the_window_skips():
+    """A failed create is a NULL pointer, never None: driven, it would reach the
+    Cocoa attach and kill the process (GitHub's macOS runner, exit 139)."""
+    create = glfw.create_window
+    glfw.create_window = lambda *_: ctypes.POINTER(glfw._GLFWwindow)()
+    try:
+        test_the_control_edits_sends_and_locks()
+    except unittest.SkipTest:
+        pass
+    else:
+        raise AssertionError("a window that was never made was driven")
+    finally:
+        glfw.create_window = create
+    print("  ✓  a host that cannot make the window skips the field")
+
+
 TESTS = [
     test_the_control_sits_over_the_drawn_field,
     test_the_control_holds_what_the_editor_would,
     test_a_native_bar_draws_no_text,
     test_the_control_edits_sends_and_locks,
+    test_a_host_that_cannot_make_the_window_skips,
 ]
 
 if __name__ == "__main__":
