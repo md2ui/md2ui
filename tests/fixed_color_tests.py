@@ -990,6 +990,14 @@ def test_no_pins_means_no_stamping():
     assert all(not pins for _c, pins in leaves)
 
 
+def _line_font() -> skia.Font:
+    """A locked text face, which has neither symbol: both are drawn in a face the
+    platform falls back to, whose advance only the painter's own measure knows."""
+    return make_font(
+        skia.Typeface.MakeFromFile("assets/fonts/Inter_18pt-Regular.ttf"), 20
+    )
+
+
 def _paint_line(text: str, fixed: dict[str, int] | None) -> tuple[float, np.ndarray]:
     """``text`` drawn black on white through the shared run painter, with no
     emoji face so every character takes the text slot."""
@@ -998,7 +1006,7 @@ def _paint_line(text: str, fixed: dict[str, int] | None) -> tuple[float, np.ndar
     surface = skia.Surface(240, 40)
     canvas = surface.getCanvas()
     canvas.clear(skia.ColorWHITE)
-    font = make_font(skia.Typeface(""), 20)
+    font = _line_font()
     paint = skia.Paint(Color=skia.ColorBLACK, AntiAlias=True)
     advance = _draw_text_with_emoji(
         canvas, text, 4, 28, font, None, 20, paint, fixed_colors=fixed
@@ -1016,9 +1024,11 @@ def test_a_pin_colors_a_symbol_drawn_in_the_text_slot():
     changed = (plain != pinned).any(-1)
     assert changed.any(), "the pinned ⏷ kept the text colour"
     cols = changed.nonzero()[1]
-    font = make_font(skia.Typeface(""), 20)
-    left = 4 + font.measureText("Sort ")
-    right = 4 + font.measureText("Sort ⏷")
+    from md2ui.pipeline.render_text_paint import _text_advance
+
+    font = _line_font()
+    left = 4 + _text_advance("Sort ", font, None, 20)
+    right = 4 + _text_advance("Sort ⏷", font, None, 20)
     # Only the pinned glyph changes: the words and the unpinned ▸ are untouched.
     assert cols.min() >= int(left) - 1 and cols.max() <= int(right) + 1
     reds = pinned[changed]
