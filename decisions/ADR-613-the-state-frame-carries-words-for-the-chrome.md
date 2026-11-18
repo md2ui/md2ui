@@ -21,7 +21,7 @@ until the next state frame, and a frame without it clears it:
   text field in the document, and the answer is an ordinary prompt `p`.
 - **`n`, with `w`: the step the agent is on**, a short label ("Edit app.py", "Run the gate"),
   drawn as a pill under the working animation. In Claude Code a `PreToolUse` hook in the
-  md2ui-demo plugin posts it; elsewhere nothing does, and the window shows the animation alone.
+  md2ui plugin posts it; elsewhere nothing does, and the window shows the animation alone.
   A step that arrives in any other state is dropped, and each one re-arms `w`'s deadline, since
   the agent is plainly still working.
 

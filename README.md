@@ -27,6 +27,14 @@ documents and designs.
 md2ui needs Python 3.13 or later. It depends on `skia-python` and `glfw`, and is tested on
 macOS. Only pre-releases exist: pip needs `--pre`, or pin the version.
 
+On Linux, `skia-python` loads the system's OpenGL and fontconfig libraries, which a minimal
+install lacks (md2ui then stops with `libEGL.so.1: cannot open shared object file`). On
+Debian or Ubuntu:
+
+```
+sudo apt install libgl1 libegl1 libfontconfig1
+```
+
 **The CLI, the app and the MCP servers**, as commands on your `PATH`:
 
 ```
@@ -38,6 +46,13 @@ uvx --from md2ui==0.1.0a1 md2ui render path/to/content.md    # one command, noth
 
 ```
 uv add md2ui                             # or: pip install --pre md2ui, or pin md2ui==0.1.0a1
+```
+
+**From git**, a release tag or the latest `main`, instead of PyPI:
+
+```
+uvx --from git+https://github.com/md2ui/md2ui@v0.1.0a1 md2ui render path/to/content.md
+uv tool install git+https://github.com/md2ui/md2ui      # or: pip install git+https://github.com/md2ui/md2ui
 ```
 
 **The frontend** runs the same pipeline in the browser or a webview: md2ui-ts, on npm as
@@ -52,7 +67,7 @@ uv add md2ui                             # or: pip install --pre md2ui, or pin m
 | `md2ui-mcp` | The authoring MCP server (stdio). See [The MCP authoring server](#the-mcp-authoring-server-md2ui-mcp) |
 | `md2ui-mcp-demo` | The live demo's MCP server, which opens the window. See [Live demo with Claude](#live-demo-with-claude) |
 | `md2ui-wire` | The wire's reference server, which serves one document. See [The wire reference server](#the-wire-reference-server) |
-| `md2ui-demo-activity` | The Claude Code hook the md2ui plugins run, so the demo's window says what Claude is doing. Not run by hand |
+| `md2ui-demo-activity` | The Claude Code hook the md2ui plugin runs, so the window says what Claude is doing. Not run by hand |
 
 To work on md2ui itself, from a checkout, see
 [CONTRIBUTING.md](https://github.com/md2ui/md2ui/blob/main/CONTRIBUTING.md).
@@ -272,7 +287,7 @@ plugin for ChatGPT Desktop and Codex. Its README has the steps.
 **Or register it by hand.** Claude Code:
 
 ```
-claude mcp add md2ui-demo -- uvx --from md2ui==0.1.0a1 md2ui-mcp-demo --fetch --theme /path/to/THEME.md
+claude mcp add md2ui -- uvx --from md2ui==0.1.0a1 md2ui-mcp-demo --fetch --theme /path/to/THEME.md
 ```
 
 Claude Desktop, in `claude_desktop_config.json` (give the full path of `uvx` if Claude
@@ -281,7 +296,7 @@ Desktop does not find it):
 ```json
 {
   "mcpServers": {
-    "md2ui-demo": {
+    "md2ui": {
       "command": "uvx",
       "args": ["--from", "md2ui==0.1.0a1", "md2ui-mcp-demo", "--fetch"]
     }
@@ -332,7 +347,7 @@ variable. A browser page cannot set that header, so it cannot connect to the dem
 **After upgrading md2ui** (a new pin in `uvx --from`, or `uv tool upgrade md2ui`), the demo
 server and its window keep running the code they started with:
 
-- Claude Code: `/reload-plugins` does not restart the server. Use `/mcp`, choose md2ui-demo
+- Claude Code: `/reload-plugins` does not restart the server. Use `/mcp`, choose md2ui
   and reconnect, or restart Claude Code.
 - Claude Desktop: restart it, or turn the extension off and on under Settings → Extensions.
 - Either: close the open md2ui window, so the next `show` opens one with the new code.
