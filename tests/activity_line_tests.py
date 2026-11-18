@@ -113,8 +113,12 @@ def test_the_server_advertises_only_inside_a_session():
     _server, demo = _demo()
     advert = advert_path(SESSION)
     assert advert is not None and advert.is_file(), advert
-    assert stat.S_IMODE(advert.stat().st_mode) == 0o600, oct(advert.stat().st_mode)
-    assert stat.S_IMODE(advert.parent.stat().st_mode) == 0o700
+    # Only POSIX keeps these modes. Windows ignores them: there the file is
+    # private because the folder is in the user's own temp directory, whose ACL
+    # admits that user, SYSTEM and Administrators only.
+    if os.name == "posix":
+        assert stat.S_IMODE(advert.stat().st_mode) == 0o600, oct(advert.stat().st_mode)
+        assert stat.S_IMODE(advert.parent.stat().st_mode) == 0o700
     url = json.loads(advert.read_text())["url"]
     assert url.startswith(f"http://127.0.0.1:{demo.served().port}/activity/"), url
     for bad in ("", "../x", "a/b", "a.json"):
