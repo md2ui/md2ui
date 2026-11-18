@@ -17,6 +17,7 @@ from md2ui.pipeline.render_fills import _paint_layered_fill
 from md2ui import session
 from md2ui.pipeline.layout_script_parser import LayoutBox
 from md2ui.pipeline.render_code_blocks import (
+    FADE_WIDTH,
     code_block_plan,
     copy_button_rect,
     copy_button_size,
@@ -291,11 +292,15 @@ def test_a_block_is_capped_at_max_lines():
     print("  ✓  a block is capped at Max lines, and none shows every line")
 
 
-def _bottom_edge_pixel(fade: bool) -> int:
+def _bottom_edge_pixel(fade: bool) -> tuple[int, float]:
+    """The red of a pixel inside the last line shown, and how opaque the fade's
+    background is at that pixel's centre."""
     block = CodeBlockTheme(fade=fade)
     block.text_style.color = 0xFF000000
     block.background_color = 0xFFFFFFFF
-    face = skia.Typeface.MakeDefault()
+    # A locked face that has the full block: the platform's default may not
+    # (Segoe UI, on Windows, draws it as a missing-glyph box).
+    face = skia.Typeface.MakeFromFile("assets/fonts/IBMPlexMono-Regular.ttf")
     source = "\n".join("█" * 10 for _ in range(40))
     plan = code_block_plan(source, None, face, block)
     surface = skia.Surface(200, int(plan.height))
@@ -311,18 +316,26 @@ def _bottom_edge_pixel(fade: bool) -> int:
         Theme(code_blocks=block),
         paint_fill=_paint_layered_fill,
     )
-    # Inside the last line shown, just above where its glyphs end.
+    # Inside the last line shown, just above where its glyphs end -- and the
+    # fade with them. Where that falls depends on the face's line height.
+    text_end = plan.height - block.padding.bottom
     x = int(block.padding.left + 4)
-    y = int(plan.height - block.padding.bottom) - 2
-    return surface.makeImageSnapshot().toarray(colorType=skia.kRGBA_8888_ColorType)[
+    y = int(text_end) - 2
+    opacity = 1.0 - (text_end - (y + 0.5)) / FADE_WIDTH
+    red = surface.makeImageSnapshot().toarray(colorType=skia.kRGBA_8888_ColorType)[
         y, x
     ][0]
+    return int(red), opacity
 
 
 def test_a_capped_block_fades_at_the_bottom():
     """The last visible lines of a capped block fade into its background."""
-    assert _bottom_edge_pixel(fade=True) > 240
-    assert _bottom_edge_pixel(fade=False) < 60
+    unfaded, _ = _bottom_edge_pixel(fade=False)
+    faded, opacity = _bottom_edge_pixel(fade=True)
+    assert unfaded < 60, unfaded
+    # Black ink under white at `opacity` is at least that light, whatever the
+    # face's metrics put under the pixel.
+    assert faded >= 255 * opacity - 2 and opacity > 0.9, (faded, opacity)
     print("  ✓  a capped block fades into the background at its bottom edge")
 
 
