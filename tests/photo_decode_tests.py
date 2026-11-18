@@ -239,10 +239,12 @@ glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 2)
 glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, True)
 glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 window = glfw.create_window(64, 64, "t", None, None)
-if window is None:
+if not window:  # a failed create is a NULL pointer, never None
     raise SystemExit("SKIP")
 glfw.make_context_current(window)
 context = skia.GrDirectContext.MakeGL()
+if context is None:
+    raise SystemExit("SKIP")
 srgb = skia.ImageInfo.MakeN32Premul(16, 16, skia.ColorSpace.MakeSRGB())
 jpeg = bytes(skia.Surface.MakeRaster(srgb).makeImageSnapshot().encodeToData(skia.kJPEG, 90))
 del srgb  # no shared sRGB held anywhere, as in the window when a photo lands
@@ -257,12 +259,8 @@ def test_a_held_photo_leaves_the_window_able_to_resize():
     """A photo that kept the sRGB colour space borrowed (``colorSpace()``) makes
     pybind refuse the shared one ``make_surface`` asks for, crashing a resize.
     Needs a GL context, so it runs in a child."""
-    run = subprocess.run(
-        [sys.executable, "-c", _GL_SURFACE_AFTER_A_PHOTO],
-        capture_output=True,
-        text=True,
-    )
-    if "SKIP" in run.stderr:
+    run = _run_gl_probe("")
+    if _skipped(run):
         raise unittest.SkipTest(
             "no GL context here; the resize surface was not checked"
         )
@@ -270,8 +268,35 @@ def test_a_held_photo_leaves_the_window_able_to_resize():
     print("  ✓  a held photo leaves the window able to make its surface on resize")
 
 
+def _run_gl_probe(prelude: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-c", prelude + _GL_SURFACE_AFTER_A_PHOTO],
+        capture_output=True,
+        text=True,
+    )
+
+
+def _skipped(run: subprocess.CompletedProcess[str]) -> bool:
+    """The child says SKIP as its last word: GLFW's own warnings come before it."""
+    lines = run.stderr.strip().splitlines()
+    return run.returncode != 0 and bool(lines) and lines[-1] == "SKIP"
+
+
+def test_a_host_that_cannot_make_the_window_skips_the_probe():
+    """A runner with no usable pixel format gets a NULL window, not None: the
+    probe must say SKIP instead of going on to a surface it cannot make."""
+    null_window = (
+        "import ctypes, glfw\n"
+        "glfw.create_window = lambda *a: ctypes.POINTER(glfw._GLFWwindow)()\n"
+    )
+    run = _run_gl_probe(null_window)
+    assert _skipped(run), run.stderr[-400:]
+    print("  ✓  a host that cannot make the probe's window skips it")
+
+
 TESTS = [
     test_a_held_photo_leaves_the_window_able_to_resize,
+    test_a_host_that_cannot_make_the_window_skips_the_probe,
     test_a_photo_is_held_at_the_size_it_is_drawn,
     test_a_held_photo_serves_until_the_next_decode,
     test_full_size_is_the_source_decode,
