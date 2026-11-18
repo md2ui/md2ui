@@ -30,6 +30,8 @@ from md2ui.pipeline.render_metrics import _measure_word
 from md2ui.pipeline.render_style import FontSet, _span_font
 from md2ui.pipeline.theme import Theme
 from md2ui.utils.font_loader import (
+    _FONT_MGR,
+    MONOSPACE_FAMILIES,
     _declared_family,
     family_name,
     make_font,
@@ -247,9 +249,31 @@ def test_a_name_table_family_prefers_the_typographic_english_record():
     print("  ✓  the name table's US-English typographic family wins, decoded")
 
 
+def test_the_generic_monospace_is_monospaced_where_the_platform_lacks_it():
+    # DirectWrite (Windows) knows no generic families: it answers 'monospace'
+    # with its proportional default face, as this stand-in does.
+    make_from_name = skia.Typeface.MakeFromName
+    default = make_from_name("Helvetica", skia.FontStyle.Normal())
+
+    def no_generics(name, style):
+        return default if name == "monospace" else make_from_name(name, style)
+
+    skia.Typeface.MakeFromName = staticmethod(no_generics)
+    try:
+        face = resolve_typeface("monospace", 400, False, {})
+        code = resolve_code_typeface("Not An Installed Mono", 400, False, {})
+    finally:
+        skia.Typeface.MakeFromName = make_from_name
+    if not any(_FONT_MGR.matchFamily(f).count() for f in MONOSPACE_FAMILIES):
+        raise unittest.SkipTest(f"none of {MONOSPACE_FAMILIES} is installed here")
+    assert face.isFixedPitch() and code.isFixedPitch(), face.getFamilyName()
+    print("  ✓  'monospace' draws a monospaced face where the platform has no generic")
+
+
 TESTS = [
     test_a_theme_names_a_font_by_its_file_whatever_the_platform_calls_it,
     test_a_name_table_family_prefers_the_typographic_english_record,
+    test_the_generic_monospace_is_monospaced_where_the_platform_lacks_it,
     test_no_italic_file_keeps_the_weight,
     test_italic_files_are_still_chosen,
     test_only_an_upright_face_is_slanted,

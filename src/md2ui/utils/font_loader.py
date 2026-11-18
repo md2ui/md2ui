@@ -192,7 +192,8 @@ def resolve_typeface(
     keeps the requested weight, and ``styled_font`` slants it as a browser does.
     A system family lacking the weight takes the one CSS font matching would,
     so a page draws the face a browser draws; a family the system does not
-    know takes the system's own default face.
+    know takes the system's own default face. The generic ``monospace`` is always
+    a monospaced face, as it is in a browser.
     """
     name_lower = font_name.lower()
     # Exact match
@@ -217,6 +218,15 @@ def resolve_typeface(
         print(
             f"[fonts] no match for '{font_name}' (w={weight}, italic={italic}); loaded families: {loaded}"
         )
+    face = _system_face(font_name, weight, italic)
+    if font_name.lower() == MONOSPACE and not face.isFixedPitch():
+        for family in MONOSPACE_FAMILIES:
+            if _FONT_MGR.matchFamily(family).count():
+                return _system_face(family, weight, italic)
+    return face
+
+
+def _system_face(font_name: str, weight: int, italic: bool) -> skia.Typeface:
     slant = skia.FontStyle.Italic() if italic else skia.FontStyle.Normal()
     weight = _system_weight(font_name, weight, italic)
     style = skia.FontStyle(weight, skia.FontStyle.Normal().width(), slant.slant())
@@ -227,6 +237,11 @@ def resolve_typeface(
 # installed: the generic name, which the platform answers with its own monospaced
 # face (Courier on macOS) — the face a theme naming no code font already gets.
 MONOSPACE = "monospace"
+# The installed families the generic falls to where the platform answers it with
+# a proportional face: DirectWrite (Windows) knows no generic family names.
+# Courier New first: it advances as macOS's Courier does, so a code block keeps
+# the width it measures on the reference platform.
+MONOSPACE_FAMILIES = ("Courier New", "Consolas")
 
 
 def resolve_code_typeface(
