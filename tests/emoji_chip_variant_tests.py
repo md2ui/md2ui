@@ -33,6 +33,7 @@ from markdown_datapoint_split_tests import _processed, _processed_with_criteria
 
 from md2ui.pipeline.markdown_grouper import MarkdownGroupNode, NodeType
 from md2ui.pipeline.theme import Theme, parse_theme
+from md2ui.utils.font_loader import family_name
 
 
 def _leaves(node: MarkdownGroupNode) -> list[tuple[str, str, str | None]]:
@@ -443,7 +444,7 @@ def test_chip_variant_stating_only_a_weight_keeps_the_base():
     font, size = _code_font(theme, "tertiary", fonts.mono)
     face = font.getTypeface()
     assert size == 18
-    assert face.getFamilyName() == "Work Sans", face.getFamilyName()
+    assert family_name(face) == "Work Sans", face.getFamilyName()
     assert face.fontStyle().weight() == 700, face.fontStyle().weight()
     assert fonts.mono.fontStyle().weight() == 400, "the base chip stays regular"
     print("  ✓  a variant stating only a weight keeps the base family, size, colour")

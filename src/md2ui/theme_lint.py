@@ -48,6 +48,7 @@ from md2ui.pipeline.layout_render import load_background_images
 from md2ui.pipeline.render_text import bare_glyph
 from md2ui.pipeline.theme import SHADOW_MAX_PER_KIND, Theme
 from md2ui.utils.font_loader import (
+    family_name,
     load_custom_fonts,
     resolve_code_typeface,
     resolve_typeface,
@@ -469,8 +470,8 @@ def _unloaded_families(theme_path: Path) -> list[str]:
         # A code block falls back to a monospaced face, every other block to the
         # platform's answer for the name (font_loader.resolve_code_typeface).
         in_code = [b == _CODE_BLOCK for b in asked[name]]
-        face = (code if all(in_code) else fallback)[name].getFamilyName()
-        code_face = code[name].getFamilyName()
+        face = family_name((code if all(in_code) else fallback)[name])
+        code_face = family_name(code[name])
         if any(in_code) and not all(in_code) and code_face != face:
             face = f"{face}` (code blocks in `{code_face}`)"
         else:

@@ -64,6 +64,8 @@ def _system_face(ch: str, like: "skia.Typeface") -> "skia.Typeface | None":
     """The platform's face for ``ch``, in ``like``'s weight and slant when its
     family has them; ``None`` when no installed font holds the character."""
     style = like.fontStyle()
+    # The platform's own family names, not ``font_loader.family_name``: they are
+    # asked of the platform's font manager, which knows its faces by them.
     # An empty language list crashes skia-python's binding.
     found = _FONT_MGR.matchFamilyStyleCharacter(
         like.getFamilyName(), style, ["en"], ord(ch)

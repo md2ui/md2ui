@@ -18,6 +18,7 @@ Arial checks run only where the host's Arial is the Regular + Bold family they
 were measured on (macOS), and say so where it is not.
 """
 
+import struct
 import unittest
 
 import numpy as np
@@ -29,6 +30,8 @@ from md2ui.pipeline.render_metrics import _measure_word
 from md2ui.pipeline.render_style import FontSet, _span_font
 from md2ui.pipeline.theme import Theme
 from md2ui.utils.font_loader import (
+    _declared_family,
+    family_name,
     make_font,
     SYNTHETIC_OBLIQUE_SKEW,
     css_matched_weight,
@@ -201,11 +204,52 @@ def test_an_unloaded_code_font_falls_back_to_monospace():
         [str(repo_root() / "assets/fonts/IBMPlexMono-Regular.ttf")]
     )
     loaded = resolve_code_typeface("IBM Plex Mono", 400, False, plex)
-    assert loaded.getFamilyName() == "IBM Plex Mono", "a loaded family is kept"
+    assert family_name(loaded) == "IBM Plex Mono", "a loaded family is kept"
     print("  ✓  an unloaded code font falls back to a monospaced face")
 
 
+def test_a_theme_names_a_font_by_its_file_whatever_the_platform_calls_it():
+    # DirectWrite (Windows) calls Inter_18pt-*.ttf 'Inter 18pt 18pt'; the file's
+    # own name table, and CoreText and FreeType, call it 'Inter 18pt'.
+    platform_name = skia.Typeface.getFamilyName
+    skia.Typeface.getFamilyName = lambda tf: platform_name(tf) + " 18pt"
+    try:
+        custom = _load("Regular", "Bold")
+        assert {k[0] for k in custom} == {_FAMILY}, sorted(custom)
+        face = resolve_typeface("Inter 18pt", 700, False, custom)
+    finally:
+        skia.Typeface.getFamilyName = platform_name
+    assert face is custom[(_FAMILY, 700, False)], face.getFamilyName()
+    print("  ✓  a theme's family resolves to its file, whatever the platform calls it")
+
+
+def test_a_name_table_family_prefers_the_typographic_english_record():
+    def record(platform: int, encoding: int, language: int, name_id: int, text: bytes):
+        return (platform, encoding, language, name_id, text)
+
+    records = [
+        record(1, 0, 0, 16, "Caf\u00e9 Mac".encode("mac_roman")),
+        record(3, 1, 0x40C, 16, "Famille".encode("utf-16-be")),
+        record(3, 1, 0x409, 1, "Cafe Legacy".encode("utf-16-be")),
+        record(3, 1, 0x409, 16, "Caf\u00e9".encode("utf-16-be")),
+    ]
+    header = 6 + 12 * len(records)
+    table, strings = struct.pack(">HHH", 0, len(records), header), b""
+    for platform, encoding, language, name_id, text in records:
+        table += struct.pack(
+            ">6H", platform, encoding, language, name_id, len(text), len(strings)
+        )
+        strings += text
+    assert _declared_family(table + strings) == "Caf\u00e9"
+    cut = table + strings[: -len(records[-1][-1])]
+    assert _declared_family(cut) == "Famille", "a record past the table is skipped"
+    assert _declared_family(b"") is None
+    print("  ✓  the name table's US-English typographic family wins, decoded")
+
+
 TESTS = [
+    test_a_theme_names_a_font_by_its_file_whatever_the_platform_calls_it,
+    test_a_name_table_family_prefers_the_typographic_english_record,
     test_no_italic_file_keeps_the_weight,
     test_italic_files_are_still_chosen,
     test_only_an_upright_face_is_slanted,

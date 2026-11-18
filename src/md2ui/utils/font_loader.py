@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import struct
 from pathlib import Path
 
 import skia  # type: ignore[import-untyped]
@@ -66,6 +67,72 @@ _WEIGHT_NAMES: dict[str, int] = {
 }
 
 
+_NAME_TABLE = int.from_bytes(b"name", "big")
+_TYPOGRAPHIC_FAMILY, _FAMILY = 16, 1
+_WINDOWS, _UNICODE, _MACINTOSH = 3, 0, 1
+_ENGLISH_US = 0x409
+
+
+def family_name(tf: skia.Typeface) -> str:
+    """The family a theme names ``tf`` by: the one its font file declares.
+
+    That is the typographic family (``name`` table ID 16), else the family
+    (ID 1), in the file's US-English Windows record first. The platform's own
+    answer, ``getFamilyName()``, is the fallback only when the table cannot be
+    read: it differs between platforms for the same file -- DirectWrite calls
+    ``Inter_18pt-Regular.ttf`` 'Inter 18pt 18pt' where CoreText and FreeType
+    say 'Inter 18pt' -- and a theme must name a font one way everywhere.
+    """
+    try:
+        data = tf.getTableData(_NAME_TABLE)
+    except (RuntimeError, ValueError):
+        data = None
+    return (data and _declared_family(bytes(data))) or tf.getFamilyName()
+
+
+def _declared_family(table: bytes) -> str | None:
+    """The best family record in an OpenType ``name`` table; ``None`` when it
+    has no readable one."""
+    if len(table) < 6:
+        return None
+    count, strings = struct.unpack_from(">HH", table, 2)
+    best: tuple[tuple[int, int], str] | None = None
+    for i in range(count):
+        at = 6 + 12 * i
+        if at + 12 > len(table):
+            break
+        platform, encoding, language, name_id, length, offset = struct.unpack_from(
+            ">6H", table, at
+        )
+        if name_id not in (_TYPOGRAPHIC_FAMILY, _FAMILY):
+            continue
+        rank = _record_rank(platform, encoding, language)
+        start = strings + offset
+        if rank is None or start + length > len(table):
+            continue
+        raw = table[start : start + length]
+        try:
+            text = raw.decode("mac_roman" if platform == _MACINTOSH else "utf-16-be")
+        except UnicodeDecodeError:
+            continue
+        key = (0 if name_id == _TYPOGRAPHIC_FAMILY else 1, rank)
+        if text.strip() and (best is None or key < best[0]):
+            best = (key, text.strip())
+    return best[1] if best else None
+
+
+def _record_rank(platform: int, encoding: int, language: int) -> int | None:
+    """How much a name record is preferred, lowest first; ``None`` for one whose
+    text cannot be decoded here."""
+    if platform == _WINDOWS and encoding in (0, 1, 10):  # symbol, BMP, full
+        return 0 if language == _ENGLISH_US else 1
+    if platform == _UNICODE:
+        return 2
+    if platform == _MACINTOSH and encoding == 0 and language == 0:  # Roman, English
+        return 3
+    return None
+
+
 def weight_from_str(s: str) -> int:
     """Convert a font weight string (name or number) to a numeric weight."""
     s = s.strip().lower()
@@ -103,15 +170,10 @@ def load_custom_fonts(font_paths: list[str]) -> CustomFontMap:
             continue
 
         fs = tf.fontStyle()
-        key = (
-            tf.getFamilyName().lower(),
-            fs.weight(),
-            fs.slant() != skia.FontStyle.kUpright_Slant,
-        )
+        family = family_name(tf)
+        key = (family.lower(), fs.weight(), fs.slant() != skia.FontStyle.kUpright_Slant)
         result[key] = tf
-        print(
-            f"[fonts] loaded '{tf.getFamilyName()}' w={fs.weight()} from {local.name}"
-        )
+        print(f"[fonts] loaded '{family}' w={fs.weight()} from {local.name}")
 
     return result
 
@@ -327,7 +389,7 @@ def _vary(
 
 def _nearest_weight(path: Path, base: skia.Typeface, weight: int) -> skia.Typeface:
     """The static face of ``base``'s family, beside it, nearest ``weight``."""
-    family = base.getFamilyName()
+    family = family_name(base)
     faces = [base]
     for sibling in sorted(path.parent.glob(f"{path.stem.rsplit('-', 1)[0]}-*")):
         if (
@@ -339,7 +401,7 @@ def _nearest_weight(path: Path, base: skia.Typeface, weight: int) -> skia.Typefa
         tf = skia.Typeface.MakeFromFile(str(sibling))
         if (
             tf is not None
-            and tf.getFamilyName() == family
+            and family_name(tf) == family
             and _WGHT not in _axis_ranges(tf)
         ):
             faces.append(tf)

@@ -122,7 +122,8 @@ src/md2ui/pipeline/theme_model.py = 1697
 # way a theme says one thing and draws another. 2026-11-10: `dropped_shadows` (a layer
 # past the per-kind cap) takes it 19 past the default; each check is read alone.
 # 2026-11-10: +1, `encoding="utf-8"` on its text reads/writes, wrapped by the formatter.
-src/md2ui/theme_lint.py = 520
+# 2026-11-18: +1, the import of font_loader.family_name, the one family-name rule.
+src/md2ui/theme_lint.py = 521
 
 # render_backgrounds.py owns which layered backgrounds exist and how they resolve:
 # image sources per element, list-card baking, fixed-style and photo-card surfaces.

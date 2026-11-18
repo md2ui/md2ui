@@ -56,7 +56,11 @@ from md2ui.check import check_markdown
 from md2ui.meanings import Selection
 from md2ui.pipeline.render_settings import VIEW
 from md2ui.utils.fetch_policy import POLICY
-from md2ui.utils.font_loader import resolve_code_typeface, resolve_typeface
+from md2ui.utils.font_loader import (
+    family_name,
+    resolve_code_typeface,
+    resolve_typeface,
+)
 
 BASE = """# Meanings
 
@@ -867,8 +871,8 @@ def _font_lint(drawing: str) -> tuple[str, ...]:
 
 def test_lint_reports_a_family_the_fonts_never_load():
     with contextlib.redirect_stdout(io.StringIO()):
-        fallback = resolve_typeface("IBM Plex Mono", 400, False, {}).getFamilyName()
-        mono = resolve_code_typeface("IBM Plex Mono", 400, False, {}).getFamilyName()
+        fallback = family_name(resolve_typeface("IBM Plex Mono", 400, False, {}))
+        mono = family_name(resolve_code_typeface("IBM Plex Mono", 400, False, {}))
     fonts = [m for m in _font_lint(FONT_THEME) if "## Fonts" in m]
     # A code block falls back to a monospaced face, the header to the platform's.
     assert fonts == [

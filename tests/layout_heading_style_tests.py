@@ -312,6 +312,7 @@ def test_heading_honours_its_own_font_name():
     from pathlib import Path
 
     from md2ui import session
+    from md2ui.utils.font_loader import family_name
 
     fonts_dir = Path("assets/fonts").resolve()
     with tempfile.TemporaryDirectory() as d:
@@ -328,11 +329,10 @@ def test_heading_honours_its_own_font_name():
         theme = session.load_theme(path)
     fonts = session.load_fonts(theme)
     family = {
-        level: faces[0].getFamilyName()
-        for level, faces in fonts.heading_typefaces.items()
+        level: family_name(faces[0]) for level, faces in fonts.heading_typefaces.items()
     }
     assert family[1] == "IBM Plex Mono", family
-    assert family[2] == fonts.typeface.getFamilyName() == "Inter 18pt", family
+    assert family[2] == family_name(fonts.typeface) == "Inter 18pt", family
     print("  ✓  a heading draws in its own Font Name; unnamed, in the body's")
 
 

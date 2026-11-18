@@ -39,6 +39,7 @@ from md2ui import session
 from md2ui.pipeline import layout_render
 from md2ui.pipeline.layout_generator import LayoutGenerator
 from md2ui.utils.image_cache import ImageCache
+from md2ui.utils.font_loader import family_name
 
 
 def _fonts() -> FontSet:
@@ -627,7 +628,7 @@ def test_a_global_tier_draws_its_own_family_and_weight():
         if nd.get("text_style") in ("lead", "display"):
             got, _ = _effective_text_fonts(nd["type"], 0, fonts, theme, node=nd)
             style = got.typeface.fontStyle()
-            faces[nd["text_style"]] = (got.typeface.getFamilyName(), style.weight())
+            faces[nd["text_style"]] = (family_name(got.typeface), style.weight())
     assert faces["lead"][0] == "EB Garamond", faces
     assert faces["display"] == ("Inter 18pt", 600), faces
     print("  ✓  a global tier block draws its own family and weight")

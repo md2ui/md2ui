@@ -55,6 +55,7 @@ import skia  # type: ignore[import-untyped]
 from fontTools.ttLib import TTFont
 
 from md2ui.utils.font_loader import (
+    family_name,
     load_custom_fonts,
     resolve_code_typeface,
     resolve_typeface,
@@ -193,7 +194,7 @@ def family_aliases(theme: Any, resolved: Any) -> dict[str, str]:
         custom = load_custom_fonts(theme.font_paths)
         for name in sorted(_font_names(resolved)):
             resolve = resolve_code_typeface if name == code else resolve_typeface
-            family = resolve(name, 400, False, custom).getFamilyName()
+            family = family_name(resolve(name, 400, False, custom))
             if family.casefold() != name.casefold():
                 aliases[name] = family
     return aliases
