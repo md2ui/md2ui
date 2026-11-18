@@ -21,6 +21,7 @@ Pinned here:
 Run with: uv run python tests/app_capture_tests.py
 """
 
+import json
 import os
 import tempfile
 import threading
@@ -144,8 +145,9 @@ def test_a_bad_request_is_dropped_and_a_bad_mode_falls_back():
         assert channel.pending() is None, "a malformed request was acted on"
         assert channel.pending() is None, "a malformed request was retried"
 
+        # Encoded, not spliced: a Windows path's backslashes are JSON escapes.
         (directory / "request.json").write_text(
-            '{"out": "' + str(directory / "s.png") + '", "mode": "nonsense"}'
+            json.dumps({"out": str(directory / "s.png"), "mode": "nonsense"})
         )
         request = channel.pending()
         assert request is not None and request.mode == "view", request
