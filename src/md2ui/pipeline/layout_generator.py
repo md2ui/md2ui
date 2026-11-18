@@ -143,6 +143,7 @@ BENTO_UNIT_TARGET: float = 260.0  # target px per grid column when picking divis
 BENTO_MAX_DEPTH: int = 3  # guillotine nesting depth (rows within bands)
 BENTO_BEAM: int = 4  # Pareto candidates kept per memo state
 BENTO_ASPECT_WEIGHT: float = 0.25  # aspect-penalty weight (area-scaled)
+BENTO_DEV_STEPS: float = 1e9  # deviation grid: log() differs by platform (ADR-300)
 
 
 # ---------------------------------------------------------------------------
@@ -636,11 +637,8 @@ class LayoutGenerator:
             sub, h = cell_at(i, s)
             wd = span_w(s)
             r = wd / h
-            dev = min(
-                abs(math.log(r)),
-                abs(math.log(r / 2.0)),
-                abs(math.log(2.0 * r)),
-            )
+            dev = min(abs(math.log(r)), abs(math.log(r / 2.0)), abs(math.log(2.0 * r)))
+            dev = round(dev * BENTO_DEV_STEPS) / BENTO_DEV_STEPS
             pen = BENTO_ASPECT_WEIGHT * dev * wd * h
             if r > 4.0 or r < 0.25:  # sliver guard
                 pen *= 2.0

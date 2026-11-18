@@ -27,6 +27,11 @@ Bento is a solve. Steering it is fighting it.
 If a bento result is wrong, the diagnosis is the *content* (structure, grouping,
 minimums), not a missing hint.
 
+The same content gives the same arrangement on every platform. The aspect penalty's
+deviation is counted in steps of 1e-9 (`BENTO_DEV_STEPS`, in md2ui and md2ui-ts alike),
+because `log` comes from the platform's maths library: macOS and Linux round some results
+differently in the last bit, and two arrangements that tie were chosen differently.
+
 ## Consequence accepted
 
 A solve re-solves on any measured change. One label a few characters longer can move a
