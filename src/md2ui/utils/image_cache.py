@@ -443,6 +443,15 @@ class ImageCache:
         pending = self._pending
 
         def _load(url: str) -> None:
+            try:
+                _fetch_one(url)
+            finally:
+                # diskcache opens a connection per thread and keeps it until the
+                # thread ends: close this one now, as Windows cannot remove a
+                # cache whose file is still open.
+                disk.close()
+
+        def _fetch_one(url: str) -> None:
             if not POLICY.remote:
                 # A server fetches nothing, not even from the disk cache an app
                 # filled. A fetch never made has not failed: the URL gets no
@@ -555,9 +564,11 @@ class ImageCache:
                 photo.image, photo.level = image, level
 
     def close(self) -> None:
-        """End the background decoders, if any started."""
+        """End the background decoders, if any started, and let go of the disk
+        cache this thread opened."""
         if self._decoder is not None:
             self._decoder.close()
+        self._disk.close()
 
     def wait(self, timeout: float) -> None:
         """Block until every fetch has landed, or *timeout* seconds have passed."""

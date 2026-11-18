@@ -372,7 +372,9 @@ src/md2ui/pipeline/render_colors.py = 545
 # since the server started (the logic is md2ui/stale_code.py).
 # 2026-11-16, owner-approved: to 561 -- guide serves a theme's pattern asked under
 # `patterns/` (a shared one by that name wins).
-src/md2ui/mcp_server.py = 561
+# 2026-11-18: +2, `preview` closes its image cache: Windows CI could not delete an
+# open cache file.
+src/md2ui/mcp_server.py = 563
 
 # image_cache.py fetches the pictures a document names and holds them decoded at the
 # size they are drawn. Decoding and fetching are two concepts and the seam is clean
@@ -380,7 +382,9 @@ src/md2ui/mcp_server.py = 561
 # scripts/extract_module.py, is what would let it shrink.
 # 2026-11-12, owner-approved: to 630 -- theme background images are kept in the same disk
 # cache (cached_bytes; findings/remote-image-renders-are-not-deterministic). Fetch side.
-src/md2ui/utils/image_cache.py = 630
+# 2026-11-18: +11, each fetch thread and `close` let go of diskcache's per-thread
+# connection, which Windows otherwise keeps holding the cache file with. Fetch side.
+src/md2ui/utils/image_cache.py = 641
 
 # meanings.py is the contract: parsing MEANINGS.md, merging a theme's, and what is
 # served from it, including the closed slot vocabulary. One concept.

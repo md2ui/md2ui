@@ -459,6 +459,8 @@ def build_server(
                 )
             except session.PageTooLarge as refused:
                 raise ToolError(str(refused)) from None
+            finally:
+                images.close()  # a long-lived server keeps no cache file open
             data = encode_png(image)
             if data is None:
                 raise ToolError("the picture could not be encoded as PNG")

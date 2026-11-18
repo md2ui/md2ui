@@ -29,6 +29,7 @@ import base64
 import contextlib
 import dataclasses
 import io
+import os
 import re
 import sys
 import tempfile
@@ -336,6 +337,28 @@ def test_preview_names_a_glyph_no_font_has():
     print("  ✓  preview: a glyph no font has is named; a fallback glyph is not")
 
 
+def _files_open_in(folder: str) -> list[str] | None:
+    """The files under *folder* this process holds open; None where the platform
+    cannot list them (Windows, which instead refuses to delete one)."""
+    real = os.path.realpath(folder)
+    if os.path.isdir("/proc/self/fd"):  # Linux
+        paths = []
+        for fd in os.listdir("/proc/self/fd"):
+            with contextlib.suppress(OSError):
+                paths.append(os.readlink(f"/proc/self/fd/{fd}"))
+    elif sys.platform == "darwin":
+        import fcntl
+
+        paths = []
+        for fd in os.listdir("/dev/fd"):
+            with contextlib.suppress(OSError):
+                raw = fcntl.fcntl(int(fd), fcntl.F_GETPATH, bytes(1024))
+                paths.append(raw.rstrip(b"\0").decode())
+    else:
+        return None
+    return sorted(p for p in paths if p.startswith(real + os.sep))
+
+
 def test_a_local_install_previews_pictures():
     """``--fetch`` (a local plugin's launch): ``preview`` loads the picture, as the
     window on the same machine does, and says it reaches outside the process."""
@@ -363,6 +386,10 @@ def test_a_local_install_previews_pictures():
                 arguments = {"markdown": doc, "picture_width": 0}
                 result: Any = asyncio.run(server.call_tool("preview", arguments))
             assert not POLICY.remote, "the tool restores the policy it found"
+            # Every thread's cache connection is closed once the preview is
+            # done: Windows cannot delete the folder of an open cache file.
+            held = _files_open_in(tmp)
+            assert not held, held
         finally:
             image_cache._download, image_cache._CACHE_DIR = real_download, real_dir
             _restore_app_policy()
