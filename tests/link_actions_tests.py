@@ -46,7 +46,7 @@ from md2ui.pipeline.render_picture import record_document
 from md2ui.pipeline.render_settings import VIEW
 from md2ui.pipeline.render_text import inline_link_urls, parse_inline_spans
 from md2ui.utils.image_cache import ImageCache
-from md2ui.utils.scroll_state import ScrollState
+from md2ui.utils.scroll_state import _SCROLLBAR_W, ScrollState
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -417,10 +417,13 @@ def test_window_to_content_inverts_the_paint():
                         {},
                     )
                     checked = 0
+                    # The overlay scrollbars sit along the right and bottom
+                    # edges: a fill under one is not the document's pixel.
+                    bars = _SCROLLBAR_W + 4
                     for cx, cy in opaque:
                         mx, my = cx - dx, cy - dy
-                        inside = vp_x + 2 <= mx < vp_x + vp_w - 2
-                        if not (inside and vp_y + 2 <= my < vp_y + vp_h - 2):
+                        inside = vp_x + 2 <= mx < vp_x + vp_w - bars
+                        if not (inside and vp_y + 2 <= my < vp_y + vp_h - bars):
                             continue
                         want = _read(doc, cx * dpr, cy * dpr)
                         got = _read(frame, mx * dpr, my * dpr)
