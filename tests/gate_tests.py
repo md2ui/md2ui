@@ -13,7 +13,7 @@ Run with: uv run python scripts/run_tests.py
 
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
@@ -99,6 +99,17 @@ def test_budget_reports_slack_as_a_note_not_an_error():
 
     errors, warnings = _sandbox(body)
     assert errors == [] and warnings and "Lower it" in warnings[0]
+
+
+def test_a_windows_path_matches_its_budget_line():
+    """budgets.txt spells paths with ``/``; a Windows path must still match it."""
+    saved = cc.ROOT
+    cc.ROOT = PureWindowsPath("C:/repo")  # type: ignore[assignment]
+    try:
+        rel = cc._rel(PureWindowsPath("C:/repo/src/md2ui/s.py"))
+    finally:
+        cc.ROOT = saved
+    assert rel == "src/md2ui/s.py", rel
 
 
 def test_untested_module_is_reported():
@@ -340,6 +351,7 @@ TESTS = [
     test_coverage_accepts_a_function_local_import,
     test_coverage_is_not_fooled_by_a_prefix,
     test_budget_fails_when_a_file_exceeds_the_default,
+    test_a_windows_path_matches_its_budget_line,
     test_budget_reports_slack_as_a_note_not_an_error,
     test_untested_module_is_reported,
     test_a_module_that_became_covered_must_leave_the_untested_list,

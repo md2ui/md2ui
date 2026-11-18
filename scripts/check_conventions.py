@@ -40,7 +40,7 @@ import json
 import re
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePath
 
 ROOT = Path(__file__).resolve().parent.parent
 RATCHETS = ROOT / "ratchets.txt"
@@ -128,8 +128,10 @@ def _repo_files() -> dict[str, list[Path]]:
     return index
 
 
-def _rel(path: Path) -> str:
-    return str(path.relative_to(ROOT))
+def _rel(path: PurePath) -> str:
+    """A repo path as budgets.txt and the messages spell it: with ``/`` on every
+    platform, so a Windows path matches its line."""
+    return path.relative_to(ROOT).as_posix()
 
 
 def src_modules() -> list[Path]:
