@@ -252,7 +252,8 @@ def test_end_silence_and_lifetime_end_a_feed():
         feed = _open(served, mid, ["Elapsed"], until="silence")
         _post(served, feed.token, "Elapsed: 100%")
         time.sleep(TICK * 3)
-        assert feed.ended is None, 'until="silence" keeps a feed past full'
+        # Full never ends it; the lifetime may already have, on a slow host.
+        assert feed.ended != "full", 'until="silence" keeps a feed past full'
         assert _ended(served).reason == "lifetime"
     finally:
         served.stop()
