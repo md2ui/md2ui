@@ -1,0 +1,72 @@
+# A release, on a tag `v<project.version>`: build once, publish the same files to
+# TestPyPI and then to PyPI.
+#
+# Both indexes trust this workflow by name (trusted publishing): owner `md2ui`,
+# repository `md2ui`, workflow `release.yml`, environments `testpypi` and `pypi`.
+# Renaming this file or either environment breaks publishing until the
+# registrations are changed to match. No token is stored anywhere.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: The tag names the version being built
+        run: |
+          version="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match project.version $version (expected v$version)"
+            exit 1
+          fi
+          echo "releasing $version"
+      - uses: astral-sh/setup-uv@v10.3.3
+      - run: uv build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  testpypi:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/md2ui
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    needs: testpypi
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: pypi
+      url: https://pypi.org/p/md2ui
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,0 +1,63 @@
+### Content types
+
+Landing page - Standalone page
+Portfolio - Catalog
+Shopping - Catalog
+Details page -
+Articles -
+Report - Dashboard
+Summary - Dasboard/Article
+Schedule - Calendar
+Statement -  Dashboard
+How to guide - Details page
+Cooking recipe - Details page
+Technical documentation - How to guide
+
+### Section types
+
+Lists
+Task lists
+About us
+Headline
+Tagline
+Key benefits
+Introduction
+What we do?
+Mission Statement
+Core Values
+Pourpose
+Features
+Benefits
+Selling points
+Showcase
+Services
+Description
+Product description
+How-to Guide
+Tutorial
+Directory
+Testimonial(s)
+Quote
+Review(s)
+Trust badge
+Comparison(s)
+Call To Action
+Newsletter
+Pricing
+Charts
+Statistcis
+Data
+FAQ
+Links
+Privacy policy
+Terms
+Contact information
+Newsletter
+Login
+Subscription
+Sign up / Registration
+Media content
+Kpis & Metrics
+Actions
+Conclusion
+Steps

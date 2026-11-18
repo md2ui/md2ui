@@ -1,0 +1,1 @@
+{"t":"m","m":"c7.12","md":"Want me to generate the quarterly report?\n\n[Yes](agent:generate-report?format=pdf) *[No](agent:cancel)*\n"}

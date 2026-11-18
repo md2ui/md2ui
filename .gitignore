@@ -1,0 +1,48 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.zed
+
+.DS_Store
+
+screenshots/
+
+assets/fonts/
+
+# The icon font's large source: scripts/build_icon_font.py pins its hash and says
+# where to download it. Its .codepoints file is small and tracked.
+assets/icons/source/*.ttf
+
+.codex/
+
+
+# What `md2ui group` writes beside a document, at any depth.
+**/grouping-ast.json
+
+eval-runs/
+
+# Private working folders, kept in the md2ui-private repository. Only each folder's
+# procedure README (and the public example suite) is published.
+/findings/*
+!/findings/README.md
+/proposals/*
+!/proposals/README.md
+/evals/*
+!/evals/README.md
+!/evals/example/
+/plans/
+/scripts/eval_live*.py
+/scripts/eval_fidelity.py
+/tests/eval_live*_tests.py
+# The private repository's own notes, when it is mounted here.
+/PRIVATE.md
+
+# Agent worktrees: local checkouts of a branch, never part of the repository.
+/.claude/worktrees/

@@ -1,0 +1,120 @@
+// The md2ui wire protocol, v1 — the gRPC binding (ADR-601, protocol/README.md).
+//
+// The same frames as the JSON binding, as protobuf messages. Field names are
+// readable; each field's json_name is the JSON binding's compact key, so a field
+// here and a key in schema/*.json are one thing with one meaning
+// (tests/wire_tests.py keeps the two in step). Field numbers are fixed forever:
+// add, never renumber or reuse.
+//
+// One bidirectional stream per connection. The client's first frame is Hello.
+// Security rules, limits and error codes are the spec's (protocol/README.md);
+// the transport changes nothing about them.
+
+syntax = "proto3";
+
+package md2ui.wire.v1;
+
+service Md2uiSession {
+  rpc Session(stream ClientFrame) returns (stream ServerFrame);
+}
+
+// --- server -> client ---------------------------------------------------------
+
+message ServerFrame {
+  oneof frame {
+    Message message = 1;
+    Delta delta = 2;
+    End end = 3;
+    Error error = 4;
+    State state = 5;
+  }
+}
+
+// "t":"m" — a whole response, or a re-send replacing `replaces` in place.
+message Message {
+  string message_id = 1 [json_name = "m"];
+  string markdown = 2 [json_name = "md"];
+  optional string replaces = 3 [json_name = "r"];
+}
+
+// "t":"d" — streaming: append `markdown` to the message.
+message Delta {
+  string message_id = 1 [json_name = "m"];
+  uint32 seq = 2 [json_name = "s"];
+  string markdown = 3 [json_name = "md"];
+}
+
+// "t":"z" — the message is complete; enable its actions now.
+message End {
+  string message_id = 1 [json_name = "m"];
+  string hash = 2 [json_name = "h"];
+}
+
+// "t":"x" — an event refused, or a stale message.
+message Error {
+  string code = 1 [json_name = "code"];
+  optional string message_id = 2 [json_name = "m"];
+  optional uint64 seq = 3 [json_name = "q"];
+}
+
+// "t":"s" — what the agent is doing: "l" listening, "w" working, "i" idle.
+message State {
+  string state = 1 [json_name = "s"];
+  // The step the agent is on, with "w" (ADR-613).
+  optional string note = 2 [json_name = "n"];
+  // The `q`s of this client's events answered: by the agent with "l", by the
+  // backend (a handled click, ADR-612) with any state.
+  repeated uint32 answered = 3 [json_name = "u"];
+  // The question the agent asked its prompt to show, with "l" (ADR-613).
+  optional string placeholder = 4 [json_name = "ph"];
+}
+
+// --- client -> server ---------------------------------------------------------
+
+message ClientFrame {
+  oneof frame {
+    Hello hello = 1;
+    Event event = 2;
+    Prompt prompt = 3;
+    Typing typing = 4;
+  }
+}
+
+// "t":"h" — the first frame of a connection.
+message Hello {
+  uint32 version = 1 [json_name = "v"];
+}
+
+// "t":"e" — a click on target `ordinal` of message `message_id`.
+message Event {
+  string message_id = 1 [json_name = "m"];
+  uint32 ordinal = 2 [json_name = "x"];
+  uint64 seq = 3 [json_name = "q"];
+  optional string action = 4 [json_name = "a"];
+  optional bool checked = 5 [json_name = "c"];
+  // Inside the domain the document authored: `[65%]` is 0-100, `[3/10]` is 0-10.
+  optional double value = 6 [json_name = "v"];
+  // Other targets this event commits, so one press carries what the user
+  // adjusted. In JSON each is the two-element array [ordinal, value].
+  repeated Settled settled = 7 [json_name = "vs"];
+}
+
+// One committed target: a checkbox's state, or a slider's value.
+message Settled {
+  uint32 ordinal = 1;
+  oneof value {
+    bool checked = 2;
+    double number = 3;
+  }
+}
+
+// "t":"p" — what the user typed into the frontend's own field (ADR-601).
+message Prompt {
+  uint64 seq = 1 [json_name = "q"];
+  string text = 2 [json_name = "tx"];
+}
+
+// "t":"k" — the user is typing in the frontend's own field (ADR-601): sent at
+// most once a second while keys are pressed, and carrying nothing, not the text.
+message Typing {
+}

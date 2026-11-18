@@ -1,0 +1,393 @@
+# Per-file line ceilings. Anything not listed gets the default of 500.
+#
+# THE LINE COUNT IS A PROXY. It is not a quality standard and hitting it is not a
+# defect. What it watches for is code concentrating in one file for no reason --
+# the failure this project actually had. A file that is genuinely one concept is
+# allowed to be long, and splitting a coherent file to satisfy a number erodes
+# the code to protect the metric.
+#
+# So exceeding a ceiling is a PROMPT, not a verdict. Two honest answers:
+#   * it holds more than one concept  -> split it along a seam, lower the number
+#   * it is one concept               -> raise the number here, with the reason
+#
+# A file may shrink freely; `make check` reports slack so a gain can be locked in
+# with `make ratchets-lower`. Numbers below the default line are inherited from
+# before the restructure and carry no judgement. Numbers above it are decisions,
+# and each one says why.
+
+# grouper_kinds.py is what makes two siblings the same kind: the signature, its
+# hash and the tolerance. Every line-kind rule (pairs, chip, button and rating
+# lines, column lines, spacers beside a node) is read by both the signature and
+# the tolerance, so each lives beside them. One concept.
+src/md2ui/pipeline/grouper_kinds.py = 725
+
+# grouper_column_rows.py is the two authored partitions of a box, `:::` and `...`:
+# which runs are cells, which nodes form a cell, edge spacers, and how a spring
+# region's placement passes to its pieces. One concept, read off the partition.
+src/md2ui/pipeline/grouper_column_rows.py = 561
+# render_hints.py: the per-node render hints and their URL params (validators, the
+# retired params an author may still write, and the run poll). Under the default.
+src/md2ui/pipeline/render_hints.py = 279
+# grouper_split_criteria.py: the rules the grouper asks to tell prose from
+# structure (the KEY_VALUE, SEPARATOR and ELEMENT criteria). Under the default.
+src/md2ui/pipeline/grouper_split_criteria.py = 384
+# data_point_detector.py is the ENGINE and the pattern table: the registry,
+# detect_all, overlap resolution, and the ordered map of regex -> type -> parser.
+# One concept: the table's ORDER is meaningful (overlap resolution reads it), so
+# cutting it in half would split one decision across two files. The enum, scan
+# scope, parsers, guards and sign step already live in sibling detector modules.
+src/md2ui/pipeline/data_point_detector.py = 1190
+# detector_parsers.py: one function per data-point type, match -> value. About 80
+# functions of identical shape are one concept; the only sub-seam is by domain,
+# which scatters a uniform family to satisfy a number. OWNER-accepted, and the
+# precedent: a budget is a prompt, not a verdict.
+src/md2ui/pipeline/detector_parsers.py = 1653
+# detector_vocabulary.py: month names, currencies, units, signs, the date-chip join,
+# emoji ranges. Under the default; listed so a reader sees the third layer beside
+# the other two.
+# 2026-11-10 finding emoji-tables-vs-unicode-properties: +5 (185 -> 190): a comment that the
+# emoji ranges are wider than Unicode's on purpose, md2ui's icon vocabulary (owner's decision).
+src/md2ui/pipeline/detector_vocabulary.py = 190
+# layout_generator.py: the LayoutGenerator class, the arrangement decisions. It is
+# stateful -- most methods read a theme, a measurer or a cache threaded through the
+# instance -- so it does not decompose the way the grouper and detector did.
+# Coherent clusters have already moved to generator_*.py modules.
+# OWNER: revisit when another coherent cluster is approved.
+# 2026-11-11, owner-approved: +5 to 4044 -- the run poll (ADR-301), which lives
+# here: image cards vote in it, and a run of heading sections is polled at its
+# own level.
+src/md2ui/pipeline/layout_generator.py = 4044
+# generator_displays.py: building the drawn datapoint displays (date chips, rings,
+# bars, charts, lines) and the gates that enable them. Under the default.
+src/md2ui/pipeline/generator_displays.py = 361
+# generator_units.py: what a layout unit IS, how big it is, and what goes between
+# two of them. One concept: the numbers and predicates every arrangement decision
+# is written in terms of. Pure functions of a node (no theme, measurer or oracle),
+# which is why they could leave the generator.
+src/md2ui/pipeline/generator_units.py = 801
+# layout_render.py: the renderer. This ceiling is a DEFERRAL, not an argument that
+# the file is one concept -- it is not (see SEAMS in scripts/check_conventions.py).
+# Colour resolution is the slice to extract first (render_colors.py is its home);
+# new drawing goes in its own render_* module, with only the wiring here.
+# OWNER: this number should come DOWN via extraction, not up again.
+# 2026-11-13, owner-approved: +8 (2956 -> 2964) inside this ceiling -- the wiring of
+# choices and counts (ADR-405): the count's paint dispatch, a choice option's colours
+# in draw_link_box, and the segmented runs painted before the content boxes. The
+# drawing itself is in render_counts.py and render_segmented.py.
+src/md2ui/pipeline/layout_render.py = 2965
+# markdown_grouper.py: the grouper's phase sequence and its walks. Each phase's
+# logic lives in a grouper_* module; this file owns their ordering, which is where
+# every phase is named. If it grows, take a seam from SEAMS in
+# scripts/check_conventions.py (fingerprints first).
+src/md2ui/pipeline/markdown_grouper.py = 2672
+# grouper_annotate.py is the stamps on a FINISHED tree (glue, escapes, emoji kinds,
+# section keys, style scopes, leaf kinds, ATX levels, rotation channels), as
+# per-node steps of one walk rather than several walks. One concept: flags on a
+# finished node.
+src/md2ui/pipeline/grouper_annotate.py = 575
+# theme.py is the THEME.md PARSER only (the dataclasses are in theme_model.py). One
+# concept, a reader for one file format: its per-block parsers are read together
+# and share the bullet/section machinery, and a THEME key's parser lives here
+# (AGENTS.md, *Where a new X goes*). Split further only if a block's rules stop
+# being readable beside the others.
+# 2026-11-10: +16 (2619 -> 2635): a variant's shadows replace Primary's kind by kind,
+# in the badge and chip variant replay beside the colour lists that already do. The
+# same concept, the variant replay; no seam opened.
+# 2026-11-14, owner-approved: to 2639 -- `### Count Button` parsed with the slider styles,
+# plus its `Symbol color` (one parser per THEME.md key).
+# 2026-11-14, owner-approved: to 2641 -- `## Links` → `Segmented`, the theme's say over
+# a choice run's look (ADR-405; one parser per THEME.md key).
+# 2026-11-16, owner-approved: to 2642 -- a theme that styles links takes them over
+# at the `## Links` header (the grey no-theme buttons).
+src/md2ui/pipeline/theme.py = 2642
+# theme_model.py is the schema: the theme dataclasses and the functions that merge
+# a variant's overrides onto Primary's values. OWNER-accepted: the admission rule is
+# one sentence ("is it a field of a theme?"), growth is one field per THEME.md key,
+# and it is read by lookup, never whole. A by-block split would make an agent guess
+# which file a field belongs in. The seam to watch is by KIND: if the variant-merge
+# logic grows past roughly a fifth of the file, the resolution half comes out.
+# 2026-11-10: +11 (1615 -> 1626): `inherit_shadows`, the per-kind rule the button,
+# chip and badge variants share, and the cap's reason. Variant-merge logic, still far
+# under the fifth that would split it out.
+# 2026-11-14, owner-approved: to 1638 -- `CountTheme` (a count's own button style and
+# symbol color) beside `SliderTheme` (one field per THEME.md key).
+# 2026-11-14, owner-approved: to 1642 -- `LinksTheme.segmented` and its docstring line
+# (one field per THEME.md key).
+# 2026-11-16, owner-approved: to 1697 -- the built-in grayscale palette, the grey
+# default buttons and `LinksTheme.take_over` (no theme draws in greys; one concept,
+# the defaults a theme starts from).
+src/md2ui/pipeline/theme_model.py = 1697
+
+# theme_lint.py is the theme's lint against its contract and the parser: one check per
+# way a theme says one thing and draws another. 2026-11-10: `dropped_shadows` (a layer
+# past the per-kind cap) takes it 19 past the default; each check is read alone.
+# 2026-11-10: +1, `encoding="utf-8"` on its text reads/writes, wrapped by the formatter.
+src/md2ui/theme_lint.py = 520
+
+# render_backgrounds.py owns which layered backgrounds exist and how they resolve:
+# image sources per element, list-card baking, fixed-style and photo-card surfaces.
+# One concept: which background a box paints.
+src/md2ui/pipeline/render_backgrounds.py = 579
+
+# render_drawing_elements.py owns the geometry and paint of non-text drawing leaves
+# (sliders, task controls): silhouette, fill, min width, baseline, and the pointer
+# map with its domain and rounding. Measure, paint and hit test read one geometry;
+# splitting it would create the second normalization point ADR-400 forbids.
+# 2026-11-14: lowered to 504 -- the drawing-element painter moved to render_element_paint.py.
+# 2026-11-16, owner-approved: to 516 -- unstyled sliders and task boxes draw in the
+# built-in greys, and an unstyled ticked box shows its tick.
+src/md2ui/pipeline/render_drawing_elements.py = 516
+
+# render_style.py: node + theme -> a concrete font, size and weight. OWNER-
+# accepted: a library of small resolvers read by lookup, not a lump; its metrics
+# half is already render_metrics.py. Revisit if one resolver grows into a procedure
+# rather than the family staying uniform.
+src/md2ui/pipeline/render_style.py = 763
+
+# render_measure.py is intrinsic sizing: natural_width/height and everything they
+# reach, including row layout and its memo. Not subdivided: the obvious sub-seam
+# (table planning) is not one, because table planning calls the general measurers.
+# Height, width and baseline stay together so measure and paint share one
+# normalization point (ADR-400).
+# 2026-11-11, owner-approved: to 2627 -- a weighted `:::` row gives its elements
+# their widest pill or word before its `:::0` pictures keep more than their floor,
+# and a rule no longer sizes a `:::0` cell. Row layout, with the helpers it needs.
+# 2026-11-12, owner-approved: to 2629 -- a code block takes no room from `:::0` pictures
+# (findings/code-block-floor-measured-as-body-text).
+src/md2ui/pipeline/render_measure.py = 2629
+# render_chart.py is the chart leaf: its plan (orientation, scale, ticks, heights,
+# where vertical bars go) and the painting that reads it. Kept whole because measure
+# and paint must come from one plan (ADR-400).
+src/md2ui/pipeline/render_chart.py = 749
+# render_bars.py is the drawn datapoint bar and its circular ring: a track and the
+# fill a value earns. One concept, under the default.
+src/md2ui/pipeline/render_bars.py = 206
+# render_line_chart.py is the arrow-chain line leaf: its height and its painting
+# (series, labels, legend, areas), from one set of numbers (ADR-400). One concept.
+# 2026-11-10: +1, the import of font_loader.make_font, the one font constructor.
+src/md2ui/pipeline/render_line_chart.py = 304
+# check_charts.py finds what kept a chart or a line from drawing -- words beside a
+# value, mixed units, an unread unit, a chain without a key -- for check's notes.
+# One concept.
+src/md2ui/check_charts.py = 383
+# value_format.py: how a declared unit is read off its line and shown on bare values
+# (`Value format`), shared by the grouper, generator and renderer. One concept.
+src/md2ui/pipeline/value_format.py = 50
+# render_place.py: placement -- place_boxes plus the bake_* and bleed passes that can
+# only run once positions are known, and the action marks noted where cards land.
+# One concept -- a box's position is not decidable in pieces -- so the length is the
+# concept's, not an accumulation.
+src/md2ui/pipeline/render_place.py = 1226
+# grouper_types.py: the shared node model and persisted AST contract every stage
+# reads, plus the node-TYPE predicates and constants the grouper, generator and
+# renderer share. Its fields record who SETS and who READS each one (the ADR-100
+# contract), so its comments are the last thing to trade for a number.
+# 2026-11-11, owner-approved: to 1051 -- a one-line link label with a spaced
+# ` ... ` spring is a row card (proposals/layout-row-links, variant A).
+# 2026-11-13, owner-approved: to 1058 -- `segmented_run`, the flag on a ` | ` run of
+# one choice's options (ADR-405), with who sets and reads it, its to_dict and from_dict.
+# 2026-11-13: to 1059 -- `feed_slots`, the ranges of content a feed writes into
+# (grouper_feed_slots), with its to_dict and from_dict; the rest paid by a shorter
+# __init__ signature (net +1).
+src/md2ui/pipeline/grouper_types.py = 1059
+# grouper_block_splits.py: where the document divides into blocks and lines join --
+# hard breaks, item-scoped `:::` / `...` / `+++`, glued runs and rules, list typing.
+# One concept, asked of lines before anything is cut; holding it here keeps
+# markdown_grouper.py at its ceiling.
+src/md2ui/pipeline/grouper_block_splits.py = 763
+# grouper_inline_marks.py is the marker VOCABULARY: which character runs are markers,
+# how a cut-in-half span is repaired (CommonMark flanking), which wrapper a span
+# carries, and the separator character sets. One concept; its docstrings carry rules
+# a reader cannot recover from the code.
+src/md2ui/pipeline/grouper_inline_marks.py = 709
+
+# render_text.py: the inline parse that measurement and painting share (ADR-400),
+# including escaped stars and hard breaks in labels. One concept: the parse.
+# 2026-11-09 finding inline-parse-quadratic-on-unclosed-underscores: +42 (508 -> 550):
+# `_hide_dead_underscores`, the openers after a line's last closer hidden from the
+# parse, so a line of them is linear (96 KB of `_a `: 16 s -> 20 ms), spans unchanged.
+# Same concept: the parse.
+# 2026-11-10 finding link-inside-emphasis-drawn-as-markdown-source: +1 (550 -> 551): a link
+# inside a styled phrase is its inline link, links off only inside code. Same concept.
+# 2026-11-10 finding emoji-tables-vs-unicode-properties: +2 (551 -> 553): `_is_emoji_char`
+# says its set is detector_vocabulary's, icon vocabulary included. Same concept.
+src/md2ui/pipeline/render_text.py = 553
+
+# grouper_displays.py: the datapoint display decisions, the _try_* per-node and
+# _flag_* group flags. Under the default; chart values live in grouper_charts.py and
+# the shared vocabulary in grouper_display_vocab.py.
+src/md2ui/pipeline/grouper_displays.py = 353
+# grouper_charts.py is charts in the grouper: which values a chart or a line takes
+# (ADR-204), why a row, a chain or a run does not draw (for check), and the group
+# flags `chart_group` and `line_group`. One concept.
+src/md2ui/pipeline/grouper_charts.py = 549
+# grouper_glue.py is one concept: which siblings become one card, and the collapse
+# that is the other half of that decision (its docstring argues the pairing). The
+# margin is `_ANNOTATE_ONLY_SPLIT_GROUP_TYPES`, an enumerated data list that shrinks
+# once it can be stated as "every annotate-only type".
+src/md2ui/pipeline/grouper_glue.py = 536
+
+# grouper_separate.py is the separation walk and the helpers it is mutually
+# recursive with: one walk whose branches share local state, kept whole. Under the
+# default.
+src/md2ui/pipeline/grouper_separate.py = 462
+
+# app.py is the user's window: the GLFW loop, key bindings, input callbacks and the
+# document watcher. OWNER-accepted: `main` is one linear procedure of resource
+# setup, callbacks and key bindings, not a cluster, so subdividing it means
+# rewriting it. Only this module holds the GL context and the window's input
+# (ADR-600); its components live in app_*.py and wire_client.py.
+# 2026-11-10: +4, `encoding="utf-8"` on its text reads/writes, wrapped by the formatter.
+src/md2ui/app.py = 1053
+
+# wire.py: the server's own copy decides -- it verifies a client event against that
+# copy, edits it in place for the agent (marks, sliders, bars, feeds, commits), and
+# builds the sentence the agent is handed. One concept; the frame codec is
+# wire_frames.py.
+# 2026-11-13: lowered to 554 -- the state edits (marks, sliders, choices) moved to
+# wire_edits.py (ADR-405).
+# 2026-11-15 finding refused-commit-press-spends-its-button: +7 (554 -> 561) --
+# verify checks everything before it records anything, so a refused press spends
+# nothing; the recording of a commit's `vs` values moved out of _settle to that point.
+src/md2ui/wire.py = 561
+# wire_frames.py: whether a frame is WELL FORMED, and nothing about what it names. It
+# imports nothing from md2ui on purpose: a validator that could reach a target would
+# be tempted to check one, and that check belongs on the other side.
+src/md2ui/wire_frames.py = 268
+# wire_feeds.py: a feed (ADR-608), the bars a process moves without a turn. One
+# concept; the margin is the docstring on why its snippet shell-quotes its line and
+# URL (a bar's key comes from the page and must stay text). 2026-11-13 (Phase 2.5):
+# raised for authored slots beside bars (finding each by name at open, with how to
+# mark one) and a post checked by drafting what the tick writes -- still one concept.
+# 2026-11-14 (ADR-614, owner-approved build): +2, `end_all` ends only the feeds on one page,
+# the page a backend's handler navigated away from, so the digest can name them.
+# 2026-11-15 (feeds-consistency, owner decisions A-B): +13, a slot a bar draws or named as a
+# bar's key in any case is refused at open with check's own words, and `until` defaults to
+# silence whenever a slot is fed -- the same concept, its open-time refusals.
+src/md2ui/wire_feeds.py = 555
+
+# check_conventions.py owns the mechanical promises in AGENTS.md. +8 over the
+# default records the test-theme isolation rule: tests may not consume the
+# owner-authored root THEME.md, except the packaging test of that artifact.
+scripts/check_conventions.py = 508
+
+# ts_fixture_layout.py records every text question a layout asks and replays it,
+# including stretched-font and shaped-emoji questions and the tree each layout
+# built. One concept: recording what a layout asks and builds.
+# 2026-11-12: +19, the ring label's exact-outline ink, a question of its own.
+# 2026-11-14: +5, that question hooked where `_text_ink` reads it too, so a
+# list marker's or quote character's outline is recorded as a ring label's is.
+scripts/ts_fixture_layout.py = 553
+
+# render_actions.py: what a click reports, as data -- the Action contract and what
+# the author wrote about a target, the hit regions built per width, and the
+# transient host state (ADR-401 lifetimes). It lives here rather than in the window
+# because it is a question about what a click reports, testable without a GPU.
+src/md2ui/pipeline/render_actions.py = 604
+
+# mcp_demo.py: the demo shell -- one conversation, its window, and the tools that
+# drive them. One concept, the channel to the user; most of the length is the tool
+# descriptions the agent reads and the listening rules (waits, grace, typing). The
+# records and `patch` live in mcp_demo_records.py, the feed in wire_feeds.py.
+# 2026-11-09 (owner-approved, S1 kept): +12 (1024 -> 1036): `launcher_bearer`, the secret a
+# launcher driving its own window may choose (MD2UI_WIRE_BEARER, 32 characters at least),
+# so the live eval harness connects again. Same concept: who holds the window's secret.
+# 2026-11-12 (owner-approved, Phase 1 includes): +20 (1036 -> 1056): `show` checks the expanded
+# page, `showing` returns its `source`, and `heard` hands over the handled clicks' digest
+# (`_listen` wraps `_wait`). Same concept: the channel to the user; the expansion itself is in
+# includes.py and wire_includes.py.
+# 2026-11-14 (owner-approved 2026-11-14, advice/forms): +1 (1056 -> 1057): `show` hands its
+# advice the lines includes drew, so a backend's stepper is not advised (ADR-612).
+# 2026-11-14 (owner-approved, Phase 3 prompt bar): lowered to 1026 -- what the user did, told
+# to the agent (`event_row`, `narrate`, `prompt_row`, the NEXT lines), moved to
+# mcp_demo_told.py with scripts/extract_module.py; then +43 for `ask` on `show`/`mark` and
+# `_Demo.activity`, the working line said under `w` (ADR-613). Same concept, the channel.
+# 2026-11-14 (ADR-614, owner-approved build): +2 (1026 -> 1028): `show` and `mark` hand over
+# the handled digest (`mcp_demo_told.handled`, which `_listen` now shares), and `offers` tags
+# a target a backend's handler may answer. Same concept, the channel.
+# 2026-11-16, owner-approved: to 1034 -- the demo plugin builds its server with
+# `note_stale` (a session keeps it running).
+# 2026-11-16: -1 (1034 -> 1033): the `offers` tag removed; the `handled` line carries it.
+src/md2ui/mcp_demo.py = 1033
+
+# check.py is the authoring checks `check` and `show` report, one concept: each
+# function finds one mistake a render would not put into words, and every issue's
+# message lives here (finding a chart's problems is check_charts.py's job).
+src/md2ui/check.py = 873
+# wire_server.py: the reference WebSocket binding (ADR-601) -- one conversation,
+# served, and the one place that knows WHO is watching (`Presence`): its queue,
+# streams, feeds, patches, handshake and per-connection state. Only the thing
+# holding the sockets can see them, so it is one concept, the binding.
+# 2026-11-12 (owner-approved, Phase 1 includes): +48 (723 -> 771): `send` and `patch` expand
+# through wire_includes.record, and `receive` hands a verified click to its handler and sends
+# the one replacement. Same concept, the binding; the expansion and the redraw live in
+# wire_includes.py.
+# 2026-11-14 (Phase 3 prompt bar): +7 (771 -> 778): `set_state` carries `ph`, the question
+# the agent asked, beside `n`; `build_app` takes a host's own routes, which the demo uses for
+# its working line (ADR-613). Same concept, the binding. 2026-11-14: +1 when rebased onto the commit-cap
+# fix, whose refused frame now ends with the same state re-send (the binding's own path).
+# 2026-11-14 (ADR-614, owner-approved build): +3 (779 -> 782): the agent's `mark`,
+# `set_slider`, `set_bar` and `patch` are refused on a page a backend navigated away from
+# (the three marks now share `_agents`, which paid for most of it), and a handled new page
+# ends the old page's feeds. Same concept, the binding; the rule is wire_includes.refuse_left.
+# 2026-11-16 (ADR-612 amended, owner's decision): +25 (782 -> 807): `Conversation.changed`, a
+# backend's redraw with no click, and `_complete` sending a server replacement only while its
+# page is shown and nothing streams -- a check only the holder of the send lock can make. Same
+# concept, the binding; the redraw, its "nothing changed" test and the digest line live in
+# wire_includes.py.
+# 2026-11-16 (owner-confirmed fix): +3 (807 -> 810): `_complete` ends a stream only at its
+# own end, so a page replaced under it (a handled tap) leaves a late joiner the stream's start.
+# Same concept, the binding; the check is under the send lock, where joins read the stream.
+src/md2ui/wire_server.py = 810
+# render_metrics.py: the measurement helpers the measurer and the painters share,
+# including the image-card ratio helpers. One concept. Raised 535 -> 565 on
+# 2026-11-14: the glyph-outline ink markers and ring labels are sized by moved in
+# from render_style and render_ring_text, so every platform measures it alike.
+src/md2ui/pipeline/render_metrics.py = 565
+# session.py is the pipeline sequence both shells run, ending in the one off-screen
+# paint they share: grouping (memoized and shared across calls), the scene build
+# (with `Layout: Auto`), and the page-too-large refusal. One concept. Its
+# resources section also says where the files it loads live -- a checkout, or an
+# installed package's md2ui/shipped/ -- and takes a theme font nobody put in place
+# from those files or the locked fonts' cache: the same loading, for a wheel.
+# Raised for that, and for the theme a shell with no document uses
+# (default_theme_path), which sits beside resolve_theme_path.
+src/md2ui/session.py = 623
+
+# render_colors.py: the color rules (replacements, rotation, fixed pins, the
+# invisibility exception judged on the composited stack). One concept: which color
+# a pin or rule paints.
+# 2026-11-16, owner-approved: to 545 -- a chip of one signed value takes the
+# direction pin (`_stamp_signed_chip`), beside the pills pins it complements.
+src/md2ui/pipeline/render_colors.py = 545
+
+# mcp_server.py is md2ui's authoring server: its tools and what `guide` serves
+# (page kinds, the core note's placement and placeholder rows). One concept.
+# 534: the server reports md2ui's version in its serverInfo (591c2c07f).
+# 2026-11-10: +5, `encoding="utf-8"` on its text reads/writes, wrapped by the formatter.
+# 2026-11-12 (owner-approved, Phase 1 includes): +11 (539 -> 550): each tool reads the
+# expanded page, and `guide` serves `includes` and names it only when some are registered.
+# 2026-11-16, owner-approved: to 556 -- `note_stale`: tools say when md2ui changed
+# since the server started (the logic is md2ui/stale_code.py).
+# 2026-11-16, owner-approved: to 561 -- guide serves a theme's pattern asked under
+# `patterns/` (a shared one by that name wins).
+src/md2ui/mcp_server.py = 561
+
+# image_cache.py fetches the pictures a document names and holds them decoded at the
+# size they are drawn. Decoding and fetching are two concepts and the seam is clean
+# (decode_image, the SVG raster, Photo -> an image_decode module); that split, via
+# scripts/extract_module.py, is what would let it shrink.
+# 2026-11-12, owner-approved: to 630 -- theme background images are kept in the same disk
+# cache (cached_bytes; findings/remote-image-renders-are-not-deterministic). Fetch side.
+src/md2ui/utils/image_cache.py = 630
+
+# meanings.py is the contract: parsing MEANINGS.md, merging a theme's, and what is
+# served from it, including the closed slot vocabulary. One concept.
+# 2026-11-10: +1, `encoding="utf-8"` on its text reads/writes, wrapped by the formatter.
+src/md2ui/meanings.py = 592
+
+# includes.py is one concept: what an include line is, how it is expanded and redrawn,
+# its region through the server's edits, and what check says about it (ADR-612).
+# 2026-11-14: 527 -- a failed include draws its registered failure line (muted) or nothing as
+# its region, the region keeps why, and `failures` reports it (fix B, a-failed-include-shows-braces).
+src/md2ui/includes.py = 527

@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$id": "markdown-grouper-ast",
+  "title": "MarkdownGrouper AST",
+  "description": "Validation schema for the AST produced by MarkdownGrouper / MarkdownGroupNode.to_dict().",
+  "$ref": "#/$defs/node",
+
+  "$defs": {
+
+    "node_label": {
+      "description": "Every label that MarkdownGrouper can assign to a node.",
+      "type": "string",
+      "enum": [
+        "root",
+
+        "group",
+
+        "heading1",
+        "heading2",
+        "heading3",
+        "heading4",
+        "heading5",
+        "heading6",
+
+        "text",
+        "horizontal_rule",
+
+        "table_header",
+        "table_row",
+        "table_cell",
+
+        "list_item",
+        "ordered_item",
+        "task_open",
+        "task_done",
+
+        "image",
+        "link",
+
+        "bold",
+        "italic",
+        "strikethrough",
+        "inline_code",
+
+        "key",
+        "value",
+        "segment",
+
+        "emoji"
+      ]
+    },
+
+    "data_point_label": {
+      "description": "dp_<DataPointType.value> as produced by MarkdownGroupNode._serialize_dp_value.",
+      "type": "string",
+      "enum": [
+        "dp_date",
+        "dp_date_range",
+        "dp_time",
+        "dp_duration",
+        "dp_quarter",
+        "dp_currency",
+        "dp_percentage",
+        "dp_number",
+        "dp_quantity",
+        "dp_ratio",
+        "dp_rate",
+        "dp_score",
+        "dp_ranking",
+        "dp_frequency",
+        "dp_measurement",
+        "dp_age",
+        "dp_range",
+        "dp_identifier",
+        "dp_change",
+        "dp_statistical",
+        "dp_phone",
+        "dp_email",
+        "dp_version",
+        "dp_file_size",
+        "dp_dimension",
+        "dp_blood_type",
+        "dp_ordinal",
+        "dp_emoji"
+      ]
+    },
+
+    "data_point": {
+      "description": "A single detected data point within a node's content string.",
+      "type": "object",
+      "required": ["label", "matched", "value", "start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "$ref": "#/$defs/data_point_label" },
+        "matched": {
+          "description": "The raw substring that was matched in the node content.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Parsed / normalised value. Type varies by label: ISO string for dates, float for currency/percentage/number, string for phone/email/version/emoji, object for date_range."
+        },
+        "start": {
+          "description": "Inclusive start index into the node content string.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "description": "Exclusive end index into the node content string.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+
+    "node": {
+      "description": "A single node in the MarkdownGrouper AST tree.",
+      "type": "object",
+      "required": ["content", "label", "fingerprint_hash", "children"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "$ref": "#/$defs/node_label" },
+        "content": {
+          "description": "The text held by this node. Empty string on internal (split) nodes.",
+          "type": "string"
+        },
+        "fingerprint_hash": {
+          "description": "Integer hash computed by ASTPatternAnalyzer, or null before analysis runs.",
+          "type": ["integer", "null"]
+        },
+        "children": {
+          "description": "Ordered child nodes.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "data_points": {
+          "description": "Detected data points within this node's content. Present only when at least one data point was found.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/data_point" },
+          "minItems": 1
+        }
+      }
+    }
+
+  }
+}

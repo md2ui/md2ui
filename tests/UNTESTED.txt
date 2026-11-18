@@ -1,0 +1,4 @@
+# Source modules that no test module mentions. This list may not GROW: a new
+# untested module fails the gate. Removing a line is how coverage is recorded --
+# the gate also fails if a module listed here has become covered.
+

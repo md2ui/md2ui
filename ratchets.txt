@@ -1,0 +1,12 @@
+# Ratchet ceilings: the most of each problem this repo is allowed to contain.
+#
+# Going OVER a ceiling fails the gate. Going UNDER it also fails, asking you to
+# lower the number -- so an improvement is locked in and a ceiling only ever
+# travels downward. Same contract as tests/BASELINE.txt, applied to counts.
+#
+# These are pre-existing, not a standard being set. The goal is 0 everywhere.
+# Regenerate with:  uv run python scripts/check_conventions.py --write-ratchets
+
+pyright_errors = 0
+ruff_errors = 0
+ruff_unformatted_files = 0

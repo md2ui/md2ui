@@ -1,0 +1,511 @@
+[project]
+name = "md2ui"
+version = "0.1.0a1"
+description = "Experimental: turns an ordinary Markdown document, such as an LLM's answer, into a rendered UI"
+readme = "README.md"
+requires-python = ">=3.13"
+# md2ui is MIT; the wheel also ships the Material Symbols icon font, Apache-2.0
+# (README, "License").
+license = "MIT AND Apache-2.0"
+license-files = ["LICENSE", "assets/icons/LICENSE", "assets/icons/NOTICE"]
+authors = [{ name = "alexrvarela" }]
+keywords = ["markdown", "ui", "llm", "mcp", "rendering", "layout", "skia"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Text Processing :: Markup :: Markdown",
+    "Topic :: Software Development :: User Interfaces",
+]
+dependencies = [
+    "diskcache>=5.6.3",
+    "glfw>=2.10.0",
+    "skia-python>=144.1,<145",
+    "numpy>=2.4.4",
+    "mcp>=2.2.0",
+    "websockets>=17.1",
+    "pygments>=2.20.0,<2.21",
+    "uharfbuzz>=0.56.3",
+    "pyobjc-framework-cocoa>=12.2.2 ; sys_platform == 'darwin'",
+    "starlette>=1.10.0",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "fonttools>=4.67.0",
+    "import-linter>=2.14",
+    "jsonschema>=4.26.0",
+    "pyright>=1.1.408",
+    "pytest>=9.0.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+# Two shells, one per audience. Declared here rather than invoked by
+# path so the entry points are canonical and survive a module move.
+#   md2ui           the LLM CLI: `group | layout | render`, each runs once and exits
+#   md2ui-app       the user's window: live reload, key bindings, watchers
+#   md2ui-mcp       the authoring MCP server (stdio)
+#   md2ui-mcp-demo  the live demo's MCP server, which opens the window
+#   md2ui-wire      the wire's reference server, which serves one document
+#   md2ui-demo-activity  the Claude Code hook that tells the demo's window what
+#                   Claude is doing (run by the md2ui plugins)
+md2ui = "md2ui.main:main"
+md2ui-app = "md2ui.app:main"
+md2ui-mcp = "md2ui.mcp_server:main"
+md2ui-mcp-demo = "md2ui.mcp_demo:main"
+md2ui-wire = "md2ui.wire_server:main"
+md2ui-demo-activity = "md2ui.mcp_demo_activity:main"
+
+[project.urls]
+Homepage = "https://md2ui.org"
+Repository = "https://github.com/md2ui/md2ui"
+Issues = "https://github.com/md2ui/md2ui/issues"
+
+# --- What the package holds ----------------------------------------------------
+# The wheel is src/md2ui plus the files it reads at run time, which stay where a
+# checkout keeps them and are copied, laid out the same, into md2ui/shipped/
+# (session.resource_root). No font: an installed md2ui fetches a locked one on first
+# use (md2ui.utils.font_lock); only the icon font, which md2ui builds, ships.
+# The sdist holds exactly what the wheel is built from.
+
+[tool.hatch.build]
+exclude = ["skills/renders", "skills/theme", "skills/content-types.txt"]
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "src/md2ui",
+    "README.md",
+    "LICENSE",
+    "skills",
+    "patterns",
+    "THEME.md",
+    "MEANINGS.md",
+    "assets/fonts.lock",
+    "assets/app/icon.png",
+    "assets/demo/working.webp",
+    "assets/icons/LICENSE",
+    "assets/icons/NOTICE",
+    "assets/icons/material-design-icons-md2ui.ttf",
+    "data/images/image-placeholder.png",
+    "data/images/image-broken-placeholder.png",
+    "data/vectors/image-placeholder.svg",
+]
+
+[tool.hatch.build.targets.wheel]
+only-include = [
+    "src/md2ui",
+    "skills",
+    "patterns",
+    "assets/fonts.lock",
+    "assets/app/icon.png",
+    "assets/demo/working.webp",
+    "assets/icons/LICENSE",
+    "assets/icons/NOTICE",
+    "assets/icons/material-design-icons-md2ui.ttf",
+    "data/images/image-placeholder.png",
+    "data/images/image-broken-placeholder.png",
+    "data/vectors/image-placeholder.svg",
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/md2ui" = "md2ui"
+"skills" = "md2ui/shipped/skills"
+"patterns" = "md2ui/shipped/patterns"
+"assets" = "md2ui/shipped/assets"
+"data" = "md2ui/shipped/data"
+
+# A file cannot be a source prefix: the two root files are placed one by one.
+[tool.hatch.build.targets.wheel.force-include]
+"THEME.md" = "md2ui/shipped/THEME.md"
+"MEANINGS.md" = "md2ui/shipped/MEANINGS.md"
+
+# --- Architecture contracts --------------------------------------------------
+# Enforced by import-linter via `make check`, not by convention. If a rule is not
+# listed here, it is not a rule.
+#
+# These contracts constrain the real spine of the pipeline. See
+# decisions/ADR-000-architecture-and-structure.md, *The architecture: a compiler,
+# in layers*.
+
+[tool.importlinter]
+root_package = "md2ui"
+
+[[tool.importlinter.contracts]]
+name = "The pipeline is a one-way spine"
+type = "layers"
+layers = [
+    "md2ui.pipeline.layout_render",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.data_point_detector",
+]
+
+[[tool.importlinter.contracts]]
+name = "utils is a leaf: it knows nothing about md2ui"
+type = "forbidden"
+source_modules = ["md2ui.utils"]
+forbidden_modules = ["md2ui.pipeline", "md2ui.pipeline.*"]
+
+[[tool.importlinter.contracts]]
+# NOTE: the package entries are spelled BOTH ways on purpose. A BARE package in
+# `forbidden_modules` does not catch an import whose SOURCE is itself inside that
+# package -- and every "leaf" contract here has exactly that shape, a source in
+# md2ui.pipeline forbidding md2ui.pipeline, so a bare entry here passes silently.
+# From OUTSIDE the package a bare name works correctly (a source outside
+# md2ui.pipeline forbidding it fires). The `.*` twin is what closes the
+# inside-the-package case.
+name = "theme, the layout parser and inline text are primitives"
+type = "forbidden"
+source_modules = [
+    "md2ui.pipeline.theme",
+    "md2ui.pipeline.theme_model",
+    "md2ui.pipeline.layout_script_parser",
+    "md2ui.pipeline.render_text",
+    "md2ui.pipeline.theme_placeholders",
+]
+# The parser builds the model it is split from; that pair is one primitive, and
+# the model imports nothing back. `## Images` placeholders (ADR-406) are a third
+# piece of the same primitive: their parser and dataclass, read by both, import
+# nothing. Every other pipeline edge stays forbidden.
+ignore_imports = [
+    "md2ui.pipeline.theme -> md2ui.pipeline.theme_model",
+    "md2ui.pipeline.theme -> md2ui.pipeline.theme_placeholders",
+    "md2ui.pipeline.theme_model -> md2ui.pipeline.theme_placeholders",
+]
+forbidden_modules = ["md2ui.pipeline", "md2ui.pipeline.*", "md2ui.utils", "md2ui.utils.*"]
+
+[[tool.importlinter.contracts]]
+name = "Colour rules are a leaf: they resolve colours, they do not render"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.render_colors"]
+forbidden_modules = [
+    "md2ui.pipeline.layout_render",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.utils", "md2ui.utils.*",
+]
+
+[[tool.importlinter.contracts]]
+# NOTE: `forbidden` follows INDIRECT paths too.
+name = "Spacing decides gaps; it does not render or lay out"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.render_spacing"]
+forbidden_modules = [
+    "md2ui.pipeline.layout_render",
+    "md2ui.pipeline.layout_generator",
+]
+
+[[tool.importlinter.contracts]]
+name = "Backgrounds decide the layer stack; they do not paint it"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.render_backgrounds"]
+forbidden_modules = [
+    "md2ui.pipeline.layout_render",
+    "md2ui.pipeline.layout_generator",
+]
+
+[[tool.importlinter.contracts]]
+name = "Style and metrics are shared by both halves, so they render nothing"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.render_style", "md2ui.pipeline.render_metrics"]
+forbidden_modules = [
+    "md2ui.pipeline.layout_render",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.render_backgrounds",
+]
+
+[[tool.importlinter.contracts]]
+name = "Intrinsic sizing never depends on the renderer that consumes it"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.render_measure"]
+forbidden_modules = [
+    "md2ui.pipeline.layout_render",
+    "md2ui.pipeline.layout_generator",
+]
+
+[[tool.importlinter.contracts]]
+name = "Placement positions boxes; it never paints them"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.render_place"]
+forbidden_modules = [
+    "md2ui.pipeline.layout_render",
+    "md2ui.pipeline.layout_generator",
+]
+
+[[tool.importlinter.contracts]]
+name = "Range arithmetic is pure text: it knows nothing about the AST"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.grouper_ranges"]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.data_point_detector",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+name = "The node type is the shared model: it depends on no pipeline stage"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.grouper_types"]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+name = "Display decisions read the node model; they do not build or render it"
+type = "forbidden"
+source_modules = [
+    "md2ui.pipeline.grouper_displays",
+    "md2ui.pipeline.grouper_charts",
+    "md2ui.pipeline.grouper_display_vocab",
+]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+name = "Generator displays do not import the generator that calls them"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.generator_displays"]
+forbidden_modules = ["md2ui.pipeline.layout_generator"]
+
+[[tool.importlinter.contracts]]
+name = "Block splitting is the first cut: it knows nothing about inline splitting"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.grouper_block_splits"]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.grouper_displays",
+    "md2ui.pipeline.grouper_charts",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+# `:::` rows are the second Phase 1 instruction, beside _apply_section_stops. It
+# rearranges a finished block tree and reads nothing but the node model -- no
+# splitting, no theme, no measuring. The grouper drives it; it never drives back.
+name = "Column rows rearrange a block tree; they do not build or render one"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.grouper_column_rows"]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.grouper_block_splits",
+    "md2ui.pipeline.grouper_glue",
+    "md2ui.pipeline.grouper_displays",
+    "md2ui.pipeline.grouper_charts",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+    "md2ui.pipeline.theme",
+]
+
+[[tool.importlinter.contracts]]
+# The four inline layers run in this order and never call each other backwards:
+# marks are the vocabulary, then separators divide the line, then elements peel
+# out of the pieces, then values. Each may read the layer below it.
+name = "The inline cuts are a one-way order"
+type = "layers"
+layers = [
+    "md2ui.pipeline.grouper_value_splits",
+    "md2ui.pipeline.grouper_element_splits",
+    "md2ui.pipeline.grouper_separator_splits",
+    "md2ui.pipeline.grouper_inline_marks",
+    "md2ui.pipeline.grouper_block_splits",
+]
+
+[[tool.importlinter.contracts]]
+name = "Inline splitting cuts a line; it never builds or drives the tree"
+type = "forbidden"
+source_modules = [
+    "md2ui.pipeline.grouper_separator_splits",
+    "md2ui.pipeline.grouper_element_splits",
+    "md2ui.pipeline.grouper_value_splits",
+]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+name = "Annotation phases read a finished tree; they never drive the grouper"
+type = "forbidden"
+source_modules = [
+    "md2ui.pipeline.grouper_glue",
+    "md2ui.pipeline.grouper_line_flow",
+    "md2ui.pipeline.grouper_annotate",
+]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+# A line-split run may be cleared because its glue was false, so line flow reads
+# glue. Glue never reads back.
+name = "Same-line grouping reads glue, not the other way round"
+type = "layers"
+layers = [
+    "md2ui.pipeline.grouper_line_flow",
+    "md2ui.pipeline.grouper_glue",
+]
+
+[[tool.importlinter.contracts]]
+name = "Id minting is a leaf: it hands out ids, it does not build the tree"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.grouper_ids"]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+name = "Reading a node answers a question; it never changes one"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.grouper_node_reads"]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.grouper_split_apply",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+name = "Applying a split result reads the node; the grouper drives both"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.grouper_split_apply"]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+# The whole point of this module is that anything may read it, so the only rule
+# is that it reads nothing back: display state is a value, not a stage.
+name = "Display state is a leaf: it is set and read, it does nothing"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.render_settings"]
+forbidden_modules = ["md2ui.pipeline", "md2ui.pipeline.*", "md2ui.utils", "md2ui.utils.*"]
+
+[[tool.importlinter.contracts]]
+# The walk calls every phase below it and is called only by process(). It must
+# not reach back up into the grouper that drives it.
+name = "The separation walk is driven by the grouper; it does not drive back"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.grouper_separate"]
+forbidden_modules = [
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+# The shells drive the pipeline; nothing in the pipeline may reach back up into
+# the CLI, the window, the loop, or the sequence the two shells share. This is
+# the contract that keeps main() out of the renderer for good.
+name = "The app shell is the top layer: the pipeline never imports it"
+type = "forbidden"
+source_modules = [
+    "md2ui.pipeline",
+    "md2ui.utils",
+]
+forbidden_modules = [
+    "md2ui.app",
+    "md2ui.app.*",
+    "md2ui.main",
+    "md2ui.main.*",
+    "md2ui.session",
+    "md2ui.session.*",
+]
+
+[[tool.importlinter.contracts]]
+# ADR-602: the MCP servers, the wire and the authoring check are shells over
+# the pipeline, as are the window's own app_* modules. The pipeline reads none
+# of them, so a stage can never learn how its output is delivered.
+name = "Every other shell is above the pipeline too: MCP, wire, check, app_*"
+type = "forbidden"
+source_modules = [
+    "md2ui.pipeline",
+    "md2ui.utils",
+]
+forbidden_modules = [
+    "md2ui.app_capture",
+    "md2ui.app_chrome",
+    "md2ui.app_icon",
+    "md2ui.app_native_field",
+    "md2ui.app_prompt",
+    "md2ui.app_surface",
+    "md2ui.check",
+    "md2ui.check_charts",
+    "md2ui.check_placeholders",
+    "md2ui.mcp_demo",
+    "md2ui.mcp_demo_records",
+    "md2ui.mcp_server",
+    "md2ui.wire",
+    "md2ui.wire_bars",
+    "md2ui.wire_client",
+    "md2ui.wire_feeds",
+    "md2ui.wire_frames",
+    "md2ui.wire_patch",
+    "md2ui.wire_records",
+    "md2ui.wire_sections",
+    "md2ui.wire_server",
+]
+
+[[tool.importlinter.contracts]]
+# The CLI is for agents: every verb runs once and exits, so it may never reach
+# the window, the loop or the watcher. `md2ui.session` is what both shells share,
+# so it is held to the same rule -- otherwise the CLI could reach the window
+# through it. (glfw itself is external; tests/cli_tests.py pins that one.)
+name = "The CLI never opens a window: main and session never import the app"
+type = "forbidden"
+source_modules = ["md2ui.main", "md2ui.session"]
+forbidden_modules = ["md2ui.app", "md2ui.app.*"]
+
+[[tool.importlinter.contracts]]
+# Both package entries carry their `.*` twin -- see the note on the primitives
+# contract for why a bare name is inert when the source sits inside the package.
+name = "The detector vocabulary is a table: it imports nothing"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.detector_vocabulary"]
+forbidden_modules = [
+    "md2ui.pipeline",
+    "md2ui.pipeline.*",
+    "md2ui.utils",
+    "md2ui.utils.*",
+]
+
+[[tool.importlinter.contracts]]
+name = "Parsers turn a match into a value; they never find one"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.detector_parsers"]
+forbidden_modules = [
+    "md2ui.pipeline.data_point_detector",
+    "md2ui.pipeline.markdown_grouper",
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]
+
+[[tool.importlinter.contracts]]
+# Package entries carry their `.*` twin -- see the primitives contract's note.
+name = "Unit measurements are a leaf: they describe a node, they arrange nothing"
+type = "forbidden"
+source_modules = ["md2ui.pipeline.generator_units"]
+forbidden_modules = [
+    "md2ui.pipeline.layout_generator",
+    "md2ui.pipeline.layout_render",
+]

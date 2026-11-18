@@ -1,0 +1,112 @@
+# The gate, on every push and pull request.
+#
+# macOS is the reference platform: the snapshots, ratchet counts and budgets are
+# measured there, so it alone runs `make check`, the whole gate. Linux and Windows
+# run what holds on any platform: the test suite, judged against tests/BASELINE.txt
+# as the gate judges it, and one headless render. A test that can only run on macOS
+# raises unittest.SkipTest, which scripts/run_tests.py lists by name and reason.
+
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS (the gate)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      # setup-uv publishes no floating major tag since v8: pin the release.
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/cache@v6
+        with:
+          path: assets/fonts
+          key: fonts-${{ runner.os }}-${{ hashFiles('assets/fonts.lock') }}
+      - run: uv sync --locked
+      - run: make assets
+      - run: make check
+
+  linux:
+    name: Linux (tests + smoke render)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      # skia-python needs GL, EGL and fontconfig; GLFW needs an X display, which
+      # xvfb-run provides for the tests that open a hidden window. A glyph no
+      # theme face has falls back to a system face, as on macOS: the Noto fonts
+      # stand in for the CJK and symbol faces macOS ships.
+      - name: System libraries and fallback fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xvfb xauth libgl1 libegl1 libfontconfig1 fonts-noto-core fonts-noto-cjk
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/cache@v6
+        with:
+          path: assets/fonts
+          key: fonts-${{ runner.os }}-${{ hashFiles('assets/fonts.lock') }}
+      - run: uv sync --locked
+      - run: uv run python scripts/fetch_assets.py
+      - run: xvfb-run -a uv run python scripts/run_tests.py
+      - name: Smoke render
+        run: |
+          mkdir -p smoke
+          xvfb-run -a uv run md2ui render \
+            data/markdown/tests-render/weather/current-conditions/content.md \
+            --width 896 --out smoke/render-896w.png
+          test -s smoke/render-896w.png
+      - uses: actions/upload-artifact@v7
+        with:
+          name: smoke-render-linux
+          path: smoke/
+
+  windows:
+    name: Windows (tests + smoke render)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      # md2ui reads and writes its UTF-8 text without naming the encoding, and the
+      # tests print non-ASCII marks; Windows' default code page decodes neither.
+      PYTHONUTF8: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/cache@v6
+        with:
+          path: assets/fonts
+          key: fonts-${{ runner.os }}-${{ hashFiles('assets/fonts.lock') }}
+      - run: uv sync --locked
+      # No `make` on Windows: the scripts the Makefile calls, called directly.
+      - run: uv run python scripts/fetch_assets.py
+      - run: uv run python scripts/run_tests.py
+      - name: Smoke render
+        run: |
+          mkdir -p smoke
+          uv run md2ui render \
+            data/markdown/tests-render/weather/current-conditions/content.md \
+            --width 896 --out smoke/render-896w.png
+          test -s smoke/render-896w.png
+      - uses: actions/upload-artifact@v7
+        with:
+          name: smoke-render-windows
+          path: smoke/

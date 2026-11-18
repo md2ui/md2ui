@@ -1,0 +1,11 @@
+# Known-failing tests, one `module::test` per line.
+#
+# This file is the difference between 'I broke it' and 'it was already
+# broken'. scripts/run_tests.py fails the gate on any failure NOT listed
+# here, and equally on any entry here that starts passing -- so the file
+# cannot silently rot.
+#
+# Removing a line is the normal way to record a fix. Adding one is a
+# deliberate act: it accepts a failure. Regenerate with
+#   uv run python scripts/run_tests.py --write-baseline
+
