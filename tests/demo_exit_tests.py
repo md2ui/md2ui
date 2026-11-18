@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import time
+import unittest
 
 # A demo whose window is a sleeper, ended as SIGTERM ends it; prints the window's
 # pid first, so the test can look for it afterwards.
@@ -43,6 +44,10 @@ def _alive(pid: int) -> bool:
 
 def test_sigterm_closes_the_window_and_exits():
     """The handler the demo installs for SIGTERM ends the window and the process."""
+    if sys.platform == "win32":
+        # A Windows host ends a process with TerminateProcess, which runs no
+        # handler, and os.kill(pid, 0) there terminates rather than asks.
+        raise unittest.SkipTest("no SIGTERM is delivered here; `kill -0` is POSIX")
     run = subprocess.run(
         [sys.executable, "-c", _TERMINATED], capture_output=True, text=True, timeout=60
     )
