@@ -86,7 +86,7 @@ import shutil
 import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import eval_codex
 
@@ -359,15 +359,15 @@ def _git(*args: str) -> str:
     ).stdout.strip()
 
 
-def condition_of(theme_dir: Path) -> str:
+def condition_of(theme_dir: PurePath) -> str:
     """The manifest's name for the theme a run used: ``root`` for the checkout's,
-    its path under the checkout, or its absolute path for a project's theme in
-    its own repository (ADR-501). ``eval_score.py`` finds the folder from it."""
+    its path under the checkout, or its absolute path for a project's theme in its
+    own repository (ADR-501), in ``/`` everywhere. ``eval_score.py`` reads it back."""
     if theme_dir == ROOT:
         return "root"
     if theme_dir.is_relative_to(ROOT):
-        return str(theme_dir.relative_to(ROOT))
-    return str(theme_dir)
+        return theme_dir.relative_to(ROOT).as_posix()
+    return theme_dir.as_posix()
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace | str:

@@ -144,12 +144,13 @@ def test_astra_is_refused_under_any_name():
 
 
 def test_codex_is_given_md2ui_and_nothing_else():
-    server = eval_run.md2ui_server(Path("/x/THEME.md"))
+    theme = Path("/x/THEME.md")  # the platform spells it: \x\THEME.md on Windows
+    server = eval_run.md2ui_server(theme)
     config = tomllib.loads(eval_codex.codex_config("gpt-6.1-sol", server))
     assert config["model"] == "gpt-6.1-sol"
     assert list(config["mcp_servers"]) == ["md2ui"], config["mcp_servers"]
     md2ui = config["mcp_servers"]["md2ui"]
-    assert md2ui["required"] is True and md2ui["args"][-1] == "/x/THEME.md", md2ui
+    assert md2ui["required"] is True and md2ui["args"][-1] == str(theme), md2ui
     assert md2ui["omit_tools_from"] == ["deferred"], md2ui
     assert (config["sandbox_mode"], config["approval_policy"]) == ("read-only", "never")
     assert config["web_search"] == "disabled"

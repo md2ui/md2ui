@@ -12,7 +12,7 @@ Run with: uv run python scripts/run_tests.py
 """
 
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
@@ -99,15 +99,29 @@ def test_a_theme_outside_the_checkout_names_its_condition():
     assert eval_run.condition_of(root / "evals/emoji-roles/theme") == (
         "evals/emoji-roles/theme"
     )
-    outside = Path("/elsewhere/backend/md2ui_theme")
-    assert eval_run.condition_of(outside) == str(outside)
+    # Absolute on every platform: on Windows a path needs its drive to be.
+    outside = Path(root.anchor) / "elsewhere" / "backend" / "md2ui_theme"
+    assert eval_run.condition_of(outside) == outside.as_posix()
     # The scorer reads the folder back from the condition, inside or out.
     assert root / eval_run.condition_of(outside) == outside
     print("  ✓  a theme outside the checkout is named by its absolute path")
 
 
+def test_a_condition_is_spelled_with_slashes_on_windows():
+    saved = eval_run.ROOT
+    eval_run.ROOT = PureWindowsPath("C:/repo")  # type: ignore[assignment]
+    try:
+        inside = eval_run.condition_of(PureWindowsPath("C:/repo/evals/x/theme"))
+        outside = eval_run.condition_of(PureWindowsPath("D:/project/md2ui_theme"))
+    finally:
+        eval_run.ROOT = saved
+    assert (inside, outside) == ("evals/x/theme", "D:/project/md2ui_theme")
+    print("  ✓  a condition is spelled with / on Windows too")
+
+
 TESTS = [
     test_a_theme_outside_the_checkout_names_its_condition,
+    test_a_condition_is_spelled_with_slashes_on_windows,
     test_tasks_split_on_their_ids_without_comments,
     test_a_fenced_reply_is_unwrapped,
     test_numbers_read_as_shown,
